@@ -1,9 +1,11 @@
-import { CandidateAnswers, QuestionItem, TestDatabase } from '../types';
+import { CandidateAnswers, QuestionItem, ArmyAlphaQuestion, RACQuestionItem } from '../types';
 import {
   DEFAULT_POSITIONS,
-  DEFAULT_VERBAL_QUESTIONS,
-  DEFAULT_HITUNGAN_QUESTIONS,
-  DEFAULT_ALPHA_QUESTIONS
+  DEFAULT_ALPHA_QUESTIONS,
+  PAKET_MATEMATIKA_A,
+  PAKET_MATEMATIKA_B,
+  PAKET_MATEMATIKA_C,
+  DEFAULT_RAC_QUESTIONS
 } from '../data/mockData';
 
 export const GAS_API_URL =
@@ -16,8 +18,10 @@ export interface InitResponse {
 
 export interface VerifyResponse {
   error?: string;
-  verbal?: QuestionItem[];
-  hitungan?: QuestionItem[];
+  alpha?: ArmyAlphaQuestion[];
+  matematika?: QuestionItem[];
+  paketMatematika?: string;
+  rac?: RACQuestionItem[];
   message?: string;
 }
 
@@ -40,7 +44,7 @@ export const apiService = {
       }
       return DEFAULT_POSITIONS;
     } catch (err) {
-      console.warn('GAS fetchPositions warning, using default positions fallback:', err);
+      console.warn('GAS fetchPositions fallback:', err);
       return DEFAULT_POSITIONS;
     }
   },
@@ -59,13 +63,25 @@ export const apiService = {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (err) {
-      console.warn('checkTokenStatus network/CORS error:', err);
       return { status: 'SEDANG DIKERJAKAN' };
     }
   },
 
   /**
-   * Verify token, candidate info, and initialize test questions
+   * Pick random package among Paket A, B, C for Matematika Dasar
+   */
+  getRandomMatematikaPack(): { namaPaket: string; soal: QuestionItem[] } {
+    const packs = [
+      { namaPaket: 'Paket A', soal: PAKET_MATEMATIKA_A },
+      { namaPaket: 'Paket B', soal: PAKET_MATEMATIKA_B },
+      { namaPaket: 'Paket C', soal: PAKET_MATEMATIKA_C },
+    ];
+    const randomIndex = Math.floor(Math.random() * packs.length);
+    return packs[randomIndex];
+  },
+
+  /**
+   * Verify token, candidate info, and initialize 3-stage test questions
    */
   async verifyCandidate(params: {
     token: string;
@@ -74,6 +90,8 @@ export const apiService = {
     posisi: string;
     deviceId: string;
   }): Promise<VerifyResponse> {
+    const randomPack = this.getRandomMatematikaPack();
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -95,29 +113,36 @@ export const apiService = {
       });
       clearTimeout(timeoutId);
 
-      const data: VerifyResponse = await res.json();
+      const data = await res.json();
       if (data.error) {
         return data;
       }
+
+      // If backend returns dynamic matematika questions:
+      const backendMatematika = data.matematika || data.hitungan || null;
+
       return {
-        verbal: (data.verbal && data.verbal.length > 0) ? data.verbal : DEFAULT_VERBAL_QUESTIONS,
-        hitungan: (data.hitungan && data.hitungan.length > 0) ? data.hitungan : DEFAULT_HITUNGAN_QUESTIONS,
+        alpha: DEFAULT_ALPHA_QUESTIONS,
+        matematika: (backendMatematika && backendMatematika.length > 0) ? backendMatematika : randomPack.soal,
+        paketMatematika: data.paketMatematika || randomPack.namaPaket,
+        rac: DEFAULT_RAC_QUESTIONS,
       };
     } catch (err) {
-      console.warn('Verify API request failed, utilizing local fallback engine:', err);
-      // If token format is invalid (e.g. empty or too short), we can notify user
+      console.warn('Verify API request using fallback engine:', err);
       if (params.token.trim().length < 3) {
         return { error: 'Token tidak valid. Pastikan format token benar (contoh: MIM-TEST-001).' };
       }
       return {
-        verbal: DEFAULT_VERBAL_QUESTIONS,
-        hitungan: DEFAULT_HITUNGAN_QUESTIONS,
+        alpha: DEFAULT_ALPHA_QUESTIONS,
+        matematika: randomPack.soal,
+        paketMatematika: randomPack.namaPaket,
+        rac: DEFAULT_RAC_QUESTIONS,
       };
     }
   },
 
   /**
-   * Submit candidate exam answers and proctoring violation logs
+   * Submit candidate 3-stage exam answers and proctoring logs
    */
   async submitExam(candidateAnswers: CandidateAnswers): Promise<{ success: boolean; message?: string }> {
     try {
@@ -139,7 +164,7 @@ export const apiService = {
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
-      return { success: true, message: data?.message || 'Data berhasil dikirim.' };
+      return { success: true, message: data?.status || data?.message || 'Data berhasil dikirim.' };
     } catch (err) {
       console.error('Submit exam failed:', err);
       throw err;

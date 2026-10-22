@@ -2,6 +2,7 @@ export interface QuestionItem {
   id: string;
   soal: string;
   opsi: string[];
+  kunci?: string;
   kategori?: string;
 }
 
@@ -29,6 +30,14 @@ export interface ArmyAlphaQuestion {
   metadata?: any;
 }
 
+export interface RACQuestionItem {
+  id: string;
+  nomor: number;
+  kolomA: string;
+  kolomB: string;
+  kunci: 'SAMA' | 'TIDAK SAMA';
+}
+
 export interface CandidateInfo {
   nama: string;
   email: string;
@@ -53,23 +62,33 @@ export interface CandidateAnswers {
   posisi: string;
   token: string;
   pelanggaran: number;
-  verbal: Record<string, string>;
-  hitungan: Record<string, string>;
   alpha: Record<string, AlphaAnswerItem>;
+  matematika: Record<string, string>;
+  rac: Record<string, 'SAMA' | 'TIDAK SAMA'>;
 }
 
-export type ScreenType = 'loading' | 'intro' | 'verbal' | 'alpha' | 'hitungan' | 'lock';
+export type ScreenType =
+  | 'loading'
+  | 'intro'
+  | 'instruction_1'
+  | 'alpha'
+  | 'instruction_2'
+  | 'matematika'
+  | 'instruction_3'
+  | 'latihan_rac'
+  | 'rac'
+  | 'lock';
 
 export interface TestDatabase {
-  verbal: QuestionItem[];
-  hitungan: QuestionItem[];
   alpha: ArmyAlphaQuestion[];
+  matematika: QuestionItem[];
+  rac: RACQuestionItem[];
 }
 
 export interface SessionState {
   dbData: TestDatabase;
   jawabanKandidat: CandidateAnswers;
-  tahapSaatIni: number; // 0 = intro, 1 = verbal, 2 = alpha, 3 = hitungan, 4 = lock
+  tahapSaatIni: number; // 0: intro, 1: alpha, 2: matematika, 3: rac, 4: lock
   timerSisaDetik: number;
   savedAt: number;
 }

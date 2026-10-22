@@ -1,6 +1,6 @@
 {
   "name": "Tes Online - PT Multi Indomandiri",
-  "description": "Portal tes online dan asesmen rekrutmen PT Multi Indomandiri (WINGS Group) dengan fitur verifikasi wajah, pengawasan proctoring, tes verbal, tes berhitung, dan Army Alpha.",
+  "description": "Portal tes online dan asesmen rekrutmen PT Multi Indomandiri (WINGS Group) dengan fitur verifikasi wajah dan sistem pengawasan proctoring terpadu.",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ],

@@ -5,8 +5,11 @@ import { ProctorBadge } from './components/ProctorBadge';
 import { ViolationModal } from './components/ViolationModal';
 import { LoadingScreen } from './components/screens/LoadingScreen';
 import { IntroScreen } from './components/screens/IntroScreen';
-import { StandardTestScreen } from './components/screens/StandardTestScreen';
+import { InstructionScreen } from './components/screens/InstructionScreen';
 import { ArmyAlphaScreen } from './components/screens/ArmyAlphaScreen';
+import { MatDasScreen } from './components/screens/MatDasScreen';
+import { LatihanRACScreen } from './components/screens/LatihanRACScreen';
+import { RACScreen } from './components/screens/RACScreen';
 import { LockScreen } from './components/screens/LockScreen';
 
 import {
@@ -15,17 +18,48 @@ import {
   QuestionItem,
   TestDatabase,
   SessionState,
+  AlphaAnswerItem,
+  ScreenType,
 } from './types';
 import { apiService } from './services/api';
 import {
   DEFAULT_POSITIONS,
-  DEFAULT_VERBAL_QUESTIONS,
-  DEFAULT_HITUNGAN_QUESTIONS,
   DEFAULT_ALPHA_QUESTIONS,
+  PAKET_MATEMATIKA_A,
+  DEFAULT_RAC_QUESTIONS,
 } from './data/mockData';
 
-const SESSION_KEY = 'mim_ujian_state';
+const SESSION_KEY = 'mim_ujian_state_v2';
 const DEBOUNCE_MS = 3000;
+
+// Instructions verbatim from INTRUKSI_TES_15a0d9ec.txt (strictly no test names mentioned in headings)
+const TAHAP_1_INSTRUCTIONS = [
+  'Tugas Anda mendengarkan setiap soal atau instruksi yang akan saya sampaikan.',
+  'Karena apa yang saya sampaikan merupakan jawaban dari setiap soal tersebut.',
+  'Saya hanya akan membacakan soal sebanyak satu kali dan tidak ada pengulangan.',
+  'Apabila Anda bertanya saat waktu sudah dimulai, saya tidak akan menjawab apapun.',
+  'Selama saya membacakan, Anda tidak boleh mengerjakan apapun. Dengarkan terlebih dahulu.',
+  'Saat saya bilang, mulai, Anda baru boleh mengerjakan dan saat saya bilang, stop, Anda tidak boleh mengerjakan apapun karena saya akan melanjutkan pada soal selanjutnya.',
+];
+
+const TAHAP_2_INSTRUCTIONS = [
+  'Dihadapan Anda terdapat 18 soal matematika sederhana.',
+  'Anda diminta menyelesaikan soal tersebut dengan cepat dan teliti dalam waktu yang terbatas.',
+  'Tidak diperkenankan menggunakan alat bantu hitung apapun, mencatat dan menyebarluaskan soal.',
+  'Jika memerlukan tempat untuk coret-coret, Anda bisa menggunakan kertas kosong/HVS yang sudah disiapkan.',
+];
+
+const TAHAP_3_INSTRUCTIONS = [
+  'Soal berjumlah 40 butir dimana pada setiap soal Anda diminta memilih apakah kedua tulisan/ deret angka/ gambar/ tanda yang tersedia pada soal SAMA (V) atau BERBEDA (X).',
+  'Alokasi waktu pengerjaan adalah 2 MENIT. Kerjakan secepat dan seteliti mungkin.',
+];
+
+const TAHAP_3_EXAMPLES = [
+  { soal: 'drab   |   drab', jawaban: 'SAMA (V)' },
+  { soal: '9 5 4 3 7   |   9 4 5 3 7', jawaban: 'BERBEDA (X)' },
+  { soal: '= + + = + =   |   = + = + =', jawaban: 'BERBEDA (X)' },
+  { soal: 'P.T.SCARR   |   P.T.SCAR', jawaban: 'BERBEDA (X)' },
+];
 
 export const App: React.FC = () => {
   // App system states
@@ -37,20 +71,21 @@ export const App: React.FC = () => {
   const [isStorageSupported, setIsStorageSupported] = useState(true);
   const [deviceId, setDeviceId] = useState('');
 
-  // Exam flow states
-  // screen: 'loading' | 'intro' | 'verbal' | 'hitungan' | 'alpha' | 'lock'
-  const [currentScreen, setCurrentScreen] = useState<'loading' | 'intro' | 'verbal' | 'hitungan' | 'alpha' | 'lock'>('loading');
-  const [tahapSaatIni, setTahapSaatIni] = useState(0); // 0: intro, 1: verbal, 2: hitungan, 3: lock, 4: alpha
+  // 3-Stage Pipeline Screen states
+  // screen: 'loading' | 'intro' | 'alpha' | 'matematika' | 'rac' | 'lock'
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>('loading');
+  const [tahapSaatIni, setTahapSaatIni] = useState(0); // 0: intro, 1: alpha, 2: matematika, 3: rac, 4: lock
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lockStatus, setLockStatus] = useState<'submitting' | 'success' | 'disqualified' | 'error'>('submitting');
   const [submitRetryCount, setSubmitRetryCount] = useState(0);
+  const [paketMatematikaName, setPaketMatematikaName] = useState('Paket A');
 
-  // Question database
+  // Question database for all 3 stages
   const [dbData, setDbData] = useState<TestDatabase>({
-    verbal: DEFAULT_VERBAL_QUESTIONS,
-    hitungan: DEFAULT_HITUNGAN_QUESTIONS,
     alpha: DEFAULT_ALPHA_QUESTIONS,
+    matematika: PAKET_MATEMATIKA_A,
+    rac: DEFAULT_RAC_QUESTIONS,
   });
 
   // Candidate answers state
@@ -60,12 +95,12 @@ export const App: React.FC = () => {
     posisi: '',
     token: '',
     pelanggaran: 0,
-    verbal: {},
-    hitungan: {},
     alpha: {},
+    matematika: {},
+    rac: {},
   });
 
-  // Unanswered validation flag list
+  // Unanswered list validation
   const [unansweredList, setUnansweredList] = useState<number[]>([]);
 
   // Anti-cheat modal state
@@ -121,9 +156,7 @@ export const App: React.FC = () => {
         ...overrides,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(stateToSave));
-    } catch (e) {
-      // Ignore quota error
-    }
+    } catch (e) {}
   };
 
   // Remove saved session
@@ -135,7 +168,6 @@ export const App: React.FC = () => {
 
   // Initial startup logic
   useEffect(() => {
-    // 1. Device ID
     let devId = localStorage.getItem('mim_device_id');
     if (!devId) {
       devId = 'DEV-' + Math.random().toString(36).substring(2, 11).toUpperCase();
@@ -145,27 +177,23 @@ export const App: React.FC = () => {
     }
     setDeviceId(devId);
 
-    // 2. Browser & Device Checks
     const storageOk = checkStorage();
     setIsStorageSupported(storageOk);
     setIsWebView(checkIsWebView());
     checkLiteMode();
 
-    // 3. URL Token Query Param
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get('token');
     if (tokenParam) {
       setInitialToken(tokenParam.toUpperCase().replace(/[^A-Z0-9-]/g, ''));
     }
 
-    // 4. Session Restore / Init
     let savedSession: any = null;
     if (storageOk) {
       try {
         const raw = localStorage.getItem(SESSION_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          // If within 6 hours
           if (parsed.savedAt && Date.now() - parsed.savedAt <= 6 * 60 * 60 * 1000) {
             savedSession = parsed;
           } else {
@@ -175,11 +203,10 @@ export const App: React.FC = () => {
       } catch (e) {}
     }
 
-    if (savedSession && savedSession.tahapSaatIni > 0 && savedSession.tahapSaatIni < 3) {
+    if (savedSession && savedSession.tahapSaatIni > 0 && savedSession.tahapSaatIni < 4) {
       setLoadingMessage('Memulihkan sesi ujian...');
       setCurrentScreen('loading');
 
-      // Check token status with GAS backend
       apiService
         .checkTokenStatus(savedSession.jawabanKandidat.token)
         .then((res) => {
@@ -212,29 +239,29 @@ export const App: React.FC = () => {
 
   const restoreSavedSession = (saved: any) => {
     setDbData(saved.dbData || {
-      verbal: DEFAULT_VERBAL_QUESTIONS,
-      hitungan: DEFAULT_HITUNGAN_QUESTIONS,
+      alpha: DEFAULT_ALPHA_QUESTIONS,
+      matematika: PAKET_MATEMATIKA_A,
+      rac: DEFAULT_RAC_QUESTIONS,
     });
     setCandidateAnswers(saved.jawabanKandidat);
     setTahapSaatIni(saved.tahapSaatIni);
-    const remainingTime = saved.timerSisaDetik || (saved.tahapSaatIni === 1 ? 15 * 60 : 45 * 60);
+    const remainingTime = saved.timerSisaDetik || 25 * 60;
     setTimerSeconds(remainingTime);
 
     setLoading(false);
     if (saved.tahapSaatIni === 1) {
-      setCurrentScreen('verbal');
-      startTimer(remainingTime);
-    } else if (saved.tahapSaatIni === 2) {
       setCurrentScreen('alpha');
-    } else if (saved.tahapSaatIni === 3) {
-      setCurrentScreen('hitungan');
+    } else if (saved.tahapSaatIni === 2) {
+      setCurrentScreen('matematika');
       startTimer(remainingTime);
+    } else if (saved.tahapSaatIni === 3) {
+      setCurrentScreen('rac');
     } else {
       setCurrentScreen('intro');
     }
   };
 
-  // Timer interval controller
+  // Timer interval controller for Matematika Dasar
   const startTimer = (durationSeconds: number) => {
     clearInterval(timerIntervalRef.current);
     setTimerSeconds(durationSeconds);
@@ -256,11 +283,9 @@ export const App: React.FC = () => {
   };
 
   const handleTimerTimeout = () => {
-    alert('⏳ WAKTU HABIS! Jawaban pada tahap ini akan otomatis disimpan.');
-    if (tahapRef.current === 1) {
-      transitionToStageAlpha();
-    } else if (tahapRef.current === 3) {
-      submitFinalExam();
+    alert('⏳ WAKTU HABIS! Jawaban Anda pada tahap ini akan otomatis disimpan.');
+    if (tahapRef.current === 2) {
+      transitionToStage3Instruction();
     }
   };
 
@@ -268,13 +293,9 @@ export const App: React.FC = () => {
   // SECURITY & ANTI-CHEAT LISTENERS
   // -------------------------------------------------------------
   useEffect(() => {
-    // 1. Right Click Prevent
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     document.addEventListener('contextmenu', handleContextMenu);
 
-    // 2. Keyboard shortcut block
     const handleKeyDown = (e: KeyboardEvent) => {
       const blocked =
         e.key === 'F12' ||
@@ -290,17 +311,14 @@ export const App: React.FC = () => {
 
       if (tahapRef.current > 0 && e.ctrlKey && ['C', 'V', 'X'].includes(e.key.toUpperCase())) {
         const activeTag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
-        if (activeTag !== 'input') {
-          e.preventDefault();
-        }
+        if (activeTag !== 'input') e.preventDefault();
       }
     };
     document.addEventListener('keydown', handleKeyDown);
 
-    // 3. Tab visibility change detection
     const handleVisibilityChange = () => {
       if (!document.hidden) return;
-      if (tahapRef.current < 1 || tahapRef.current === 3) return;
+      if (tahapRef.current < 1 || tahapRef.current >= 4) return;
 
       const now = Date.now();
       if (now - lastVisibilityHideRef.current < DEBOUNCE_MS) return;
@@ -310,10 +328,9 @@ export const App: React.FC = () => {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 4. DevTools window size detection
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     const devToolsInterval = setInterval(() => {
-      if (tahapRef.current < 1 || tahapRef.current === 3 || isMobile) return;
+      if (tahapRef.current < 1 || tahapRef.current >= 4 || isMobile) return;
       const widthDiff = window.outerWidth - window.innerWidth;
       const heightDiff = window.outerHeight - window.innerHeight;
       if (widthDiff > 160 || heightDiff > 160) {
@@ -330,7 +347,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handleCheatViolation = (source: 'tab' | 'devtools' | 'keys') => {
-    if (tahapRef.current < 1 || tahapRef.current === 3) return;
+    if (tahapRef.current < 1 || tahapRef.current >= 4) return;
 
     const newViolationCount = candidateAnswersRef.current.pelanggaran + 1;
     const updatedAnswers = {
@@ -344,29 +361,25 @@ export const App: React.FC = () => {
     setViolationSource(source);
 
     if (newViolationCount >= 3) {
-      // Disqualification triggered
       clearInterval(timerIntervalRef.current);
-      setTahapSaatIni(3);
-      tahapRef.current = 3;
+      setTahapSaatIni(4);
+      tahapRef.current = 4;
       setViolationModalOpen(false);
       setViolationBannerVisible(false);
       setCurrentScreen('lock');
       setLockStatus('disqualified');
 
-      // Submit forced violation result
       apiService.submitExam(updatedAnswers).catch(() => {});
       clearSession();
     } else {
       setViolationModalOpen(true);
       setViolationBannerVisible(true);
-      setTimeout(() => {
-        setViolationBannerVisible(false);
-      }, 4000);
+      setTimeout(() => setViolationBannerVisible(false), 4000);
     }
   };
 
   // -------------------------------------------------------------
-  // START EXAM (Intro -> Stage 1 Verbal)
+  // START EXAM (Intro -> Tahap 1: Army Alpha)
   // -------------------------------------------------------------
   const handleStartExam = async (candidateData: CandidateInfo) => {
     setIsSubmitting(true);
@@ -385,13 +398,13 @@ export const App: React.FC = () => {
         return;
       }
 
-      const verbalQs = verifyRes.verbal || DEFAULT_VERBAL_QUESTIONS;
-      const hitunganQs = verifyRes.hitungan || DEFAULT_HITUNGAN_QUESTIONS;
+      const mtkQuestions = verifyRes.matematika || PAKET_MATEMATIKA_A;
+      setPaketMatematikaName(verifyRes.paketMatematika || 'Paket A');
 
       const newDb: TestDatabase = {
-        verbal: verbalQs,
-        hitungan: hitunganQs,
         alpha: DEFAULT_ALPHA_QUESTIONS,
+        matematika: mtkQuestions,
+        rac: DEFAULT_RAC_QUESTIONS,
       };
       setDbData(newDb);
 
@@ -401,24 +414,22 @@ export const App: React.FC = () => {
         posisi: candidateData.posisi,
         token: candidateData.token,
         pelanggaran: 0,
-        verbal: {},
-        hitungan: {},
         alpha: {},
+        matematika: {},
+        rac: {},
       };
       setCandidateAnswers(updatedCandidateAnswers);
       candidateAnswersRef.current = updatedCandidateAnswers;
 
+      // Start Tahap 1: Instruction Screen first
       setTahapSaatIni(1);
       tahapRef.current = 1;
-      const duration = 15 * 60; // 15 Menit
-      setCurrentScreen('verbal');
-      startTimer(duration);
+      setCurrentScreen('instruction_1');
 
       saveSession({
         dbData: newDb,
         jawabanKandidat: updatedCandidateAnswers,
         tahapSaatIni: 1,
-        timerSisaDetik: duration,
       });
 
       window.scrollTo(0, 0);
@@ -429,66 +440,28 @@ export const App: React.FC = () => {
     }
   };
 
-  // Answer selection handler for Verbal & Hitungan
-  const handleSelectAnswer = (questionId: string, answer: string) => {
-    const isVerbal = currentScreen === 'verbal';
-    const targetKey = isVerbal ? 'verbal' : 'hitungan';
+  // -------------------------------------------------------------
+  // TRANSITION HANDLERS (Tahap 1 -> Tahap 2 -> Tahap 3 -> Submit)
+  // -------------------------------------------------------------
 
+  // Finish Tahap 1 -> Transition to Tahap 2 Instruction
+  const handleFinishAlpha = (alphaAnswers: Record<string, AlphaAnswerItem>) => {
     const updated = {
       ...candidateAnswersRef.current,
-      [targetKey]: {
-        ...candidateAnswersRef.current[targetKey],
-        [questionId]: answer,
-      },
+      alpha: alphaAnswers,
     };
-
     setCandidateAnswers(updated);
     candidateAnswersRef.current = updated;
-    saveSession({ jawabanKandidat: updated });
 
-    // Clear unanswered flag if resolved
-    setUnansweredList((prev) => {
-      const questions = isVerbal ? dbData.verbal : dbData.hitungan;
-      const qIndex = questions.findIndex((q) => q.id === questionId);
-      return prev.filter((n) => n !== qIndex + 1);
-    });
+    alert('✅ Tahap 1 Selesai!\nSilakan lanjutkan ke petunjuk pelaksanaan Tahap 2.');
+    transitionToStage2Instruction();
   };
 
-  // Check unanswered questions
-  const getUnansweredQuestions = (questions: QuestionItem[], currentAnswers: Record<string, string>) => {
-    const list: number[] = [];
-    questions.forEach((q, idx) => {
-      if (!currentAnswers[q.id] || currentAnswers[q.id] === '-') {
-        list.push(idx + 1);
-      }
-    });
-    return list;
-  };
-
-  // Finish Stage 1 (Verbal) -> Stage 2 (Army Alpha)
-  const handleFinishStage1 = () => {
-    const unanswered = getUnansweredQuestions(dbData.verbal, candidateAnswers.verbal);
-    if (unanswered.length > 0) {
-      setUnansweredList(unanswered);
-      alert(
-        `⚠️ Masih ada ${unanswered.length} soal yang belum dijawab!\n\nNomor: ${unanswered.join(
-          ', '
-        )}\n\nSilakan lengkapi jawaban Anda sebelum melanjutkan.`
-      );
-      return;
-    }
-
-    setUnansweredList([]);
-    transitionToStageAlpha();
-  };
-
-  const transitionToStageAlpha = () => {
+  const transitionToStage2Instruction = () => {
     clearInterval(timerIntervalRef.current);
-    alert('✅ Tahap 1 Selesai!\nSiap masuk ke Tahap 2: Tes Army Alpha (12 Nomor).');
-
     setTahapSaatIni(2);
     tahapRef.current = 2;
-    setCurrentScreen('alpha');
+    setCurrentScreen('instruction_2');
 
     saveSession({
       tahapSaatIni: 2,
@@ -497,53 +470,108 @@ export const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  // Finish Stage 2 (Army Alpha) -> Stage 3 (Hitungan)
-  const handleFinishAlpha = (alphaAnswers: any) => {
-    const updated = {
-      ...candidateAnswersRef.current,
-      alpha: alphaAnswers,
-    };
-    setCandidateAnswers(updated);
-    candidateAnswersRef.current = updated;
-
-    alert('✅ Tes Army Alpha Selesai!\nSiap masuk ke Tahap 3: Tes Berhitung (45 Menit).');
-    transitionToStage3();
-  };
-
-  const transitionToStage3 = () => {
+  const transitionToStage2MatDas = () => {
     clearInterval(timerIntervalRef.current);
-    setTahapSaatIni(3);
-    tahapRef.current = 3;
-    const duration = 45 * 60; // 45 Menit
-    setCurrentScreen('hitungan');
+    const duration = 25 * 60; // 25 Menit
+    setCurrentScreen('matematika');
     startTimer(duration);
 
     saveSession({
-      tahapSaatIni: 3,
+      tahapSaatIni: 2,
       timerSisaDetik: duration,
     });
 
     window.scrollTo(0, 0);
   };
 
-  // Finish Stage 3 (Hitungan) -> Submit Final Exam
-  const handleFinishStage3 = () => {
-    const unanswered = getUnansweredQuestions(dbData.hitungan, candidateAnswers.hitungan);
+  // Answer selection for Tahap 2
+  const handleSelectAnswerMatematika = (questionId: string, answer: string) => {
+    const updated = {
+      ...candidateAnswersRef.current,
+      matematika: {
+        ...candidateAnswersRef.current.matematika,
+        [questionId]: answer,
+      },
+    };
+    setCandidateAnswers(updated);
+    candidateAnswersRef.current = updated;
+    saveSession({ jawabanKandidat: updated });
+
+    setUnansweredList((prev) => {
+      const qIndex = dbData.matematika.findIndex((q) => q.id === questionId);
+      return prev.filter((n) => n !== qIndex + 1);
+    });
+  };
+
+  // Finish Tahap 2 -> Transition to Tahap 3 Instruction
+  const handleFinishStage2MatDas = () => {
+    const unanswered: number[] = [];
+    const questionsToTest = dbData.matematika.length >= 18 ? dbData.matematika.slice(0, 18) : dbData.matematika;
+    questionsToTest.forEach((q, idx) => {
+      if (!candidateAnswers.matematika[q.id] || candidateAnswers.matematika[q.id] === '-') {
+        unanswered.push(idx + 1);
+      }
+    });
+
     if (unanswered.length > 0) {
       setUnansweredList(unanswered);
       alert(
         `⚠️ Masih ada ${unanswered.length} soal yang belum dijawab!\n\nNomor: ${unanswered.join(
           ', '
-        )}\n\nSilakan lengkapi jawaban Anda sebelum mengirim.`
+        )}\n\nSilakan lengkapi jawaban Anda sebelum melanjutkan ke Tahap 3.`
       );
       return;
     }
 
     setUnansweredList([]);
+    alert('✅ Tahap 2 Selesai!\nSilakan lanjutkan ke petunjuk pelaksanaan Tahap 3.');
+    transitionToStage3Instruction();
+  };
+
+  const transitionToStage3Instruction = () => {
+    clearInterval(timerIntervalRef.current);
+    setTahapSaatIni(3);
+    tahapRef.current = 3;
+    setCurrentScreen('instruction_3');
+
+    saveSession({
+      tahapSaatIni: 3,
+    });
+
+    window.scrollTo(0, 0);
+  };
+
+  const transitionToStage3RAC = () => {
+    clearInterval(timerIntervalRef.current);
+    setCurrentScreen('rac');
+
+    saveSession({
+      tahapSaatIni: 3,
+    });
+
+    window.scrollTo(0, 0);
+  };
+
+  // Answer selection for Tahap 3
+  const handleSelectAnswerRAC = (questionId: string, answer: 'SAMA' | 'TIDAK SAMA') => {
+    const updated = {
+      ...candidateAnswersRef.current,
+      rac: {
+        ...candidateAnswersRef.current.rac,
+        [questionId]: answer,
+      },
+    };
+    setCandidateAnswers(updated);
+    candidateAnswersRef.current = updated;
+    saveSession({ jawabanKandidat: updated });
+  };
+
+  // Finish Tahap 3 -> Final Submission
+  const handleFinishRAC = () => {
     submitFinalExam();
   };
 
-  // Final Exam Submission
+  // Final Exam Submission to Code.gs
   const submitFinalExam = async () => {
     clearInterval(timerIntervalRef.current);
     setTahapSaatIni(4);
@@ -565,13 +593,21 @@ export const App: React.FC = () => {
     submitFinalExam();
   };
 
-  // Get active test title and stage header name
-  const isTestActive = currentScreen === 'verbal' || currentScreen === 'hitungan' || currentScreen === 'alpha';
+  // Stage display info (strictly no test names mentioned in UI)
+  const isTestActive = [
+    'instruction_1',
+    'alpha',
+    'instruction_2',
+    'matematika',
+    'instruction_3',
+    'latihan_rac',
+    'rac',
+  ].includes(currentScreen);
 
   const getStageHeaderName = () => {
-    if (currentScreen === 'verbal') return 'Tahap 1: Verbal';
-    if (currentScreen === 'alpha') return 'Tahap 2: Army Alpha';
-    if (currentScreen === 'hitungan') return 'Tahap 3: Berhitung';
+    if (currentScreen === 'instruction_1' || currentScreen === 'alpha') return 'Tahap 1';
+    if (currentScreen === 'instruction_2' || currentScreen === 'matematika') return 'Tahap 2';
+    if (currentScreen === 'instruction_3' || currentScreen === 'latihan_rac' || currentScreen === 'rac') return 'Tahap 3';
     return undefined;
   };
 
@@ -597,7 +633,7 @@ export const App: React.FC = () => {
       {/* Header */}
       <Header
         timerSeconds={timerSeconds}
-        showTimer={isTestActive}
+        showTimer={currentScreen === 'matematika'}
         stageName={getStageHeaderName()}
       />
 
@@ -618,16 +654,15 @@ export const App: React.FC = () => {
           />
         )}
 
-        {currentScreen === 'verbal' && (
-          <StandardTestScreen
-            stageNumber={1}
-            stageTitle="Tahap 1: Tes Verbal (15 Menit)"
-            questions={dbData.verbal}
-            answers={candidateAnswers.verbal}
-            onSelectAnswer={handleSelectAnswer}
-            onFinishStage={handleFinishStage1}
-            unansweredList={unansweredList}
-            isSubmitting={isSubmitting}
+        {currentScreen === 'instruction_1' && (
+          <InstructionScreen
+            tahapNumber={1}
+            subTitle="12 Butir Soal • Instruksi Audio"
+            instructionText={TAHAP_1_INSTRUCTIONS}
+            onStart={() => {
+              setCurrentScreen('alpha');
+              window.scrollTo(0, 0);
+            }}
           />
         )}
 
@@ -635,19 +670,56 @@ export const App: React.FC = () => {
           <ArmyAlphaScreen
             questions={dbData.alpha}
             onFinishAlpha={handleFinishAlpha}
-            onSkipAlpha={() => transitionToStage3()}
+            onSkipAlpha={transitionToStage2Instruction}
           />
         )}
 
-        {currentScreen === 'hitungan' && (
-          <StandardTestScreen
-            stageNumber={3}
-            stageTitle="Tahap 3: Tes Berhitung (45 Menit)"
-            questions={dbData.hitungan}
-            answers={candidateAnswers.hitungan}
-            onSelectAnswer={handleSelectAnswer}
-            onFinishStage={handleFinishStage3}
+        {currentScreen === 'instruction_2' && (
+          <InstructionScreen
+            tahapNumber={2}
+            subTitle="18 Butir Soal • Batas Waktu 25 Menit"
+            instructionText={TAHAP_2_INSTRUCTIONS}
+            onStart={transitionToStage2MatDas}
+          />
+        )}
+
+        {currentScreen === 'matematika' && (
+          <MatDasScreen
+            questions={dbData.matematika}
+            answers={candidateAnswers.matematika}
+            onSelectAnswer={handleSelectAnswerMatematika}
+            onFinishStage={handleFinishStage2MatDas}
             unansweredList={unansweredList}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        {currentScreen === 'instruction_3' && (
+          <InstructionScreen
+            tahapNumber={3}
+            subTitle="40 Butir Soal • Batas Waktu 2 Menit"
+            instructionText={TAHAP_3_INSTRUCTIONS}
+            examples={TAHAP_3_EXAMPLES}
+            nextButtonLabel="Lanjut ke Latihan Soal"
+            onStart={() => {
+              setCurrentScreen('latihan_rac');
+              window.scrollTo(0, 0);
+            }}
+          />
+        )}
+
+        {currentScreen === 'latihan_rac' && (
+          <LatihanRACScreen
+            onFinishLatihan={transitionToStage3RAC}
+          />
+        )}
+
+        {currentScreen === 'rac' && (
+          <RACScreen
+            questions={dbData.rac}
+            answers={candidateAnswers.rac}
+            onSelectAnswer={handleSelectAnswerRAC}
+            onFinishRAC={handleFinishRAC}
             isSubmitting={isSubmitting}
           />
         )}
