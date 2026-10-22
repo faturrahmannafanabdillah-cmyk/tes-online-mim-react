@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0056b3;
+  --primary-dark: #003d80;
+  --primary-light: #e8f0fb;
+  --danger: #dc3545;
+  --warning: #f59e0b;
+  --success: #16a34a;
+  --bg: #f0f4f8;
+  --card: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@keyframes timerShake {
+  from { transform: translateX(-2px); }
+  to { transform: translateX(2px); }
+}
+
+.animate-timer-shake {
+  animation: timerShake 0.4s ease infinite alternate;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.animate-rec-blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease forwards;
+}
+
+/* Army Alpha custom styles */
+.shape-board {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 20px 10px;
+  margin-top: 10px;
+  min-height: 120px;
+  transition: opacity 0.5s;
+}
+
+.alpha-input {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  border: 3px solid #1e293b;
+  background: white;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #1e293b;
+  text-transform: uppercase;
+  outline: none;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.alpha-input:focus {
+  border-color: #0056b3;
+  transform: scale(1.05);
+}
+
+.shape-circle {
+  border-radius: 50%;
+}
+
+.shape-box {
+  border-radius: 0;
+}
+
+.alpha-click {
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+}
+
+.alpha-click.dicoret {
+  text-decoration: line-through;
+  color: #dc3545;
+  background-color: #fee2e2;
+}
+
+.svg-path {
+  fill: #f8fafc;
+  stroke: #1e293b;
+  stroke-width: 3;
+  cursor: pointer;
+  transition: fill 0.2s;
+}
+
+.svg-path:hover {
+  fill: #e0f2fe;
+}
+
+.svg-path.terpilih {
+  fill: #bae6fd;
+  stroke: #0284c7;
+}
+
+@media (max-width: 600px) {
+  .alpha-input {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+  .shape-board {
+    gap: 6px;
+  }
+}
