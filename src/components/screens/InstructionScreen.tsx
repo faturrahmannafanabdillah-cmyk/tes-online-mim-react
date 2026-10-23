@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Volume2, VolumeX, PlayCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Volume2, VolumeX, PlayCircle, PauseCircle, RotateCcw, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface InstructionScreenProps {
   tahapNumber: number;
   subTitle?: string;
   instructionText: string[];
   examples?: { soal: string; jawaban: string }[];
+  audioSrc?: string;
   onStart: () => void;
   nextButtonLabel?: string;
 }
@@ -15,56 +16,116 @@ export const InstructionScreen: React.FC<InstructionScreenProps> = ({
   subTitle,
   instructionText,
   examples,
+  audioSrc,
   onStart,
   nextButtonLabel = 'Mulai Mengerjakan',
 }) => {
-  const [isPlayingAudio, setIsPlayingAudio] = useState(true);
+  const defaultAudio = audioSrc || `/audio/instructions/instruksi_tahap_${tahapNumber}.mp3`;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const fullTextToSpeak = instructionText.join(' ') + (examples ? ' Silakan perhatikan contoh soal berikut.' : '') + ' Jika sudah paham silahkan klik mulai untuk mengerjakan tes.';
-
-  const playTTS = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(fullTextToSpeak);
-      utterance.lang = 'id-ID';
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-
-      utterance.onstart = () => setIsPlayingAudio(true);
-      utterance.onend = () => setIsPlayingAudio(false);
-      utterance.onerror = () => setIsPlayingAudio(false);
-
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const stopTTS = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsPlayingAudio(false);
-  };
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [audioLoaded, setAudioLoaded] = useState(false);
+  const [hasStartedPlaying, setHasStartedPlaying] = useState(false);
 
   useEffect(() => {
-    // Autoplay voice instructions when screen mounts
-    playTTS();
+    const audio = new Audio(defaultAudio);
+    audioRef.current = audio;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+      setAudioLoaded(true);
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    const handleError = () => {
+      setAudioLoaded(false);
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    // Try autoplay once mounted
+    audio
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+        setHasStartedPlaying(true);
+      })
+      .catch(() => {
+        // Autoplay blocked by browser policy without user gesture
+        setIsPlaying(false);
+      });
 
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      audio.pause();
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audioRef.current = null;
     };
-  }, [tahapNumber]);
+  }, [tahapNumber, defaultAudio]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setHasStartedPlaying(true);
+        })
+        .catch(() => {});
+    }
+  };
+
+  const restartAudio = () => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = 0;
+    audioRef.current
+      .play()
+      .then(() => {
+        setIsPlaying(true);
+        setHasStartedPlaying(true);
+      })
+      .catch(() => {});
+  };
 
   const handleStart = () => {
-    stopTTS();
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
     onStart();
   };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs) || secs < 0) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className="max-w-[780px] mx-auto py-6 px-3 sm:px-4 animate-fade-in space-y-5">
       {/* Stage Banner (No test names, just Tahap X) */}
-      <div className="bg-[#e8f0fb] rounded-2xl p-4 sm:p-5 border border-blue-100 shadow-sm flex items-center justify-between">
+      <div className="bg-[#e8f0fb] rounded-2xl p-4 sm:p-5 border border-blue-100 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-[#0056b3] font-black text-lg sm:text-xl tracking-tight">
             Petunjuk Pelaksanaan Tahap {tahapNumber}
@@ -77,28 +138,70 @@ export const InstructionScreen: React.FC<InstructionScreenProps> = ({
         </div>
 
         {/* Audio control button */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={togglePlay}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition shadow-sm cursor-pointer ${
+              isPlaying
+                ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse'
+                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+            }`}
+            title={isPlaying ? 'Jeda Audio' : 'Putar Audio'}
+          >
+            {isPlaying ? (
+              <>
+                <PauseCircle className="w-4 h-4" />
+                <span>Audio Sedang Berjalan</span>
+              </>
+            ) : (
+              <>
+                <PlayCircle className="w-4 h-4 text-[#0056b3]" />
+                <span>{hasStartedPlaying ? 'Lanjutkan Audio' : 'Dengarkan Audio'}</span>
+              </>
+            )}
+          </button>
+
+          {hasStartedPlaying && (
+            <button
+              type="button"
+              onClick={restartAudio}
+              className="p-2 bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 rounded-full transition cursor-pointer"
+              title="Putar Ulang Dari Awal"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Audio Progress Bar Card */}
+      <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center gap-3">
         <button
           type="button"
-          onClick={isPlayingAudio ? stopTTS : playTTS}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold transition shadow-sm cursor-pointer ${
-            isPlayingAudio
-              ? 'bg-amber-500 text-white animate-pulse'
-              : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-          }`}
-          title={isPlayingAudio ? 'Hentikan Audio' : 'Putar Ulang Audio'}
+          onClick={togglePlay}
+          className="p-2 rounded-full bg-[#0056b3] text-white hover:bg-[#003d80] transition shrink-0 cursor-pointer shadow-sm"
         >
-          {isPlayingAudio ? (
-            <>
-              <Volume2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Audio Aktif</span>
-            </>
-          ) : (
-            <>
-              <PlayCircle className="w-4 h-4 text-[#0056b3]" />
-              <span className="hidden sm:inline">Putar Penjelasan</span>
-            </>
-          )}
+          {isPlaying ? <PauseCircle className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
         </button>
+
+        <div className="flex-1">
+          <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 mb-1">
+            <span className="flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-[#0056b3]" />
+              Rekaman Suara Penguji Resmi
+            </span>
+            <span className="font-mono">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
+            <div
+              className="h-full bg-gradient-to-r from-[#0056b3] to-[#003d80] transition-all duration-200 rounded-full"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Main Instructions Card */}
@@ -139,7 +242,7 @@ export const InstructionScreen: React.FC<InstructionScreenProps> = ({
         )}
 
         <div className="pt-2 text-xs text-slate-400 text-center">
-          *Pastikan Anda telah memahami petunjuk sebelum menekan tombol mulai di bawah.
+          *Pastikan Anda telah mendengarkan dan memahami petunjuk sebelum menekan tombol mulai di bawah.
         </div>
 
         {/* Start button */}

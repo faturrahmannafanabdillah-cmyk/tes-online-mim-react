@@ -26,6 +26,8 @@ export interface ArmyAlphaQuestion {
   waktu: number; // in seconds
   instruksi: string;
   audio?: string;
+  mulaiTime?: number;
+  stopTime?: number;
   tipe: ArmyAlphaType;
   metadata?: any;
 }

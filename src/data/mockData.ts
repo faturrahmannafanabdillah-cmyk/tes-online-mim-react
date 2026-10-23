@@ -18,7 +18,10 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
   {
     id: "ALP_1",
     nomor: 1,
-    waktu: 5,
+    waktu: 6,
+    audio: "/audio/army_alpha/soal_1.mp3",
+    mulaiTime: 17.7,
+    stopTime: 23.7,
     instruksi: "Lihatlah lingkaran-lingkaran pada soal nomor 1, dengarkan baik-baik : Buatlah sebuah silang dalam lingkaran ke-2 dan sebuah huruf dalam lingkaran ke-5.",
     tipe: "SOAL_1_LINGKARAN",
     metadata: { jumlah: 5 }
@@ -26,7 +29,10 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
   {
     id: "ALP_2",
     nomor: 2,
-    waktu: 5,
+    waktu: 6,
+    audio: "/audio/army_alpha/soal_2.mp3",
+    mulaiTime: 23.0,
+    stopTime: 28.7,
     instruksi: "Lihatlah soal nomor 2, lingkaran-lingkaran itu bernomor, dengarkan baik-baik : Tariklah sebuah garis dari lingkaran ke-3 ke lingkaran ke-6. Garis itu lewat di bawah lingkaran ke-4 dan di atas lingkaran ke-5.",
     tipe: "SOAL_2_JALUR_NOMOR",
     metadata: { jumlah: 9 }
@@ -35,6 +41,9 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_3",
     nomor: 3,
     waktu: 10,
+    audio: "/audio/army_alpha/soal_3.mp3",
+    mulaiTime: 19.7,
+    stopTime: 29.6,
     instruksi: "Lihatlah soal nomor 3, perhatikan baik-baik : Jika betul bahwa pesawat udara lebih cepat dari mobil, buatlah koma dalam lingkaran pertama. Jika tidak, coretlah perkataan 'Tidak'.",
     tipe: "SOAL_3_KOMA_CORET",
     metadata: { jumlah: 3, kata: ["Ya", "Tidak"] }
@@ -43,6 +52,9 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_4",
     nomor: 4,
     waktu: 10,
+    audio: "/audio/army_alpha/soal_4.mp3",
+    mulaiTime: 29.1,
+    stopTime: 39.4,
     instruksi: "Sekarang soal nomor 4, dengarkan baik-baik : Tulislah dalam lingkaran ke-3 jawaban yang betul dari pertanyaan 'Berapa harikah 1 minggu itu?' Dalam lingkaran ke-4 tidak dibuat suatu apapun, tetapi tulislah dalam lingkaran ke-5 jawaban yang salah dari pertanyaan tadi.",
     tipe: "SOAL_4_HARI_MINGGU",
     metadata: { jumlah: 5 }
@@ -51,6 +63,9 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_5",
     nomor: 5,
     waktu: 10,
+    audio: "/audio/army_alpha/soal_5.mp3",
+    mulaiTime: 24.7,
+    stopTime: 34.8,
     instruksi: "Lihatlah segitiga pada soal nomor 5, dengarkan baik-baik : Buatlah sebuah silang pada bidang yang terletak dalam lingkaran, tetapi tidak dalam segitiga. Dan tulislah huruf 'A' pada bidang yang terletak dalam lingkaran dan juga dalam segitiga.",
     tipe: "SOAL_5_SEGITIGA_LINGKARAN"
   },
@@ -58,13 +73,19 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_6",
     nomor: 6,
     waktu: 10,
+    audio: "/audio/army_alpha/soal_6.mp3",
+    mulaiTime: 26.4,
+    stopTime: 36.6,
     instruksi: "Lihatlah soal nomor 6, dengarkan baik-baik : Tulislah huruf 'X' pada bidang yang terletak dalam segitiga tetapi tidak dalam bujur sangkar dan tulislah huruf 'Y' pada bidang yang terletak dalam bujur sangkar dan segitiga tetapi tidak dalam lingkaran.",
     tipe: "SOAL_6_LINGKARAN_KOTAK_SEGITIGA"
   },
   {
     id: "ALP_7",
     nomor: 7,
-    waktu: 10,
+    waktu: 11,
+    audio: "/audio/army_alpha/soal_7.mp3",
+    mulaiTime: 21.1,
+    stopTime: 31.7,
     instruksi: "Lihatlah soal nomor 7, dengarkan baik-baik : Buatlah sebuah garis di bawah huruf yang tepat mendahului huruf 'E' dan buatlah pula sebuah garis yang melintang huruf kedua yang mendahului 'M'.",
     tipe: "SOAL_7_HURUF_GARIS_CORET"
   },
@@ -72,6 +93,9 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_8",
     nomor: 8,
     waktu: 15,
+    audio: "/audio/army_alpha/soal_8.mp3",
+    mulaiTime: 29.5,
+    stopTime: 45.0,
     instruksi: "Lihatlah soal nomor 8, perhatikanlah ke-3 lingkaran dan ke-3 perkataan-perkataan ini : Tulislah dalam lingkaran pertama, huruf kedua dari perkataan pertama. Dalam lingkaran kedua, huruf ketiga dari perkataan kedua. Dalam lingkaran ketiga, huruf penghabisan dari perkataan ketiga.",
     tipe: "SOAL_8_KATA_LINGKARAN",
     metadata: { kata: ["KAPAL", "MUATAN", "GUDANG"] }
@@ -80,6 +104,9 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
     id: "ALP_9",
     nomor: 9,
     waktu: 15,
+    audio: "/audio/army_alpha/soal_9.mp3",
+    mulaiTime: 17.1,
+    stopTime: 32.6,
     instruksi: "Lihatlah nomor 9, dengarkan baik-baik. Coretlah tiap-tiap bilangan yang lebih besar dari 30, tapi kurang dari 40.",
     tipe: "SOAL_9_DERET_30_40",
     metadata: {
@@ -89,14 +116,20 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
   {
     id: "ALP_10",
     nomor: 10,
-    waktu: 15,
+    waktu: 16,
+    audio: "/audio/army_alpha/soal_10.mp3",
+    mulaiTime: 22.1,
+    stopTime: 37.7,
     instruksi: "Lihatlah nomor 10, perhatikan bahwa gambar itu terbagi atas 5 bagian. Tulislah angka 8 atau 6 dalam 2 bagian yang kecil dan angka antara 1 sampai 5 dalam bagian hampir paling besar.",
     tipe: "SOAL_10_KOTAK_5_BAGIAN"
   },
   {
     id: "ALP_11",
     nomor: 11,
-    waktu: 15,
+    waktu: 16,
+    audio: "/audio/army_alpha/soal_11.mp3",
+    mulaiTime: 22.2,
+    stopTime: 37.8,
     instruksi: "Lihatlah nomor 11, dengarkan baik-baik. Coret tiap-tiap angka ganjil yang tidak berhuruf dan tidak terletak dalam segitiga dan coretlah pula tiap angka genap yang berhuruf dalam lingkaran.",
     tipe: "SOAL_11_BENTUK_GANJIL_GENAP",
     metadata: {
@@ -116,7 +149,10 @@ export const DEFAULT_ALPHA_QUESTIONS: ArmyAlphaQuestion[] = [
   {
     id: "ALP_12",
     nomor: 12,
-    waktu: 10,
+    waktu: 11,
+    audio: "/audio/army_alpha/soal_12.mp3",
+    mulaiTime: 24.9,
+    stopTime: 35.6,
     instruksi: "Sekarang nomor yang terakhir, yaitu nomor 12. Perhatikan baik-baik, apabila 5 lebih dari 3, coretlah angka 4, kecuali kalau 4 lebih besar daripada 6, dalam hal ini buatlah sebuah garis di bawah angka 5.",
     tipe: "SOAL_12_LOGIKA_ANGKA",
     metadata: {

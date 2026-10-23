@@ -33,12 +33,26 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
   const [svgInputValue, setSvgInputValue] = useState('');
   const svgInputRef = useRef<HTMLInputElement>(null);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerIntervalRef = useRef<any>(null);
   const currentQuestion = questions[currentIndex];
 
   useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!currentQuestion) return;
 
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     clearInterval(timerIntervalRef.current);
     setBoardVisible(false);
     setBoardActive(false);
@@ -71,43 +85,69 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
     }
   }, [activeSvgArea]);
 
-  // Voice Instruction: Clean Indonesian voiceover ending with "Mulai!"
-  const speakInstruction = (text: string, onAudioStart: () => void, onMulai: () => void) => {
-    onAudioStart();
-    const fullSpeechText = `${text} ... Mulai!`;
-
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(fullSpeechText);
-        utterance.lang = 'id-ID';
-        utterance.rate = 0.95;
-        utterance.pitch = 1.0;
-
-        utterance.onstart = () => onAudioStart();
-        utterance.onend = () => onMulai();
-        utterance.onerror = () => onMulai();
-        window.speechSynthesis.speak(utterance);
-        return;
-      } catch (e) {}
-    }
-
-    // Fallback simulation
-    setTimeout(() => onMulai(), 3500);
-  };
-
+  // Play official human voiceover audio synchronized with 'Mulai' and 'Stop'
   const handleStartInstruction = () => {
     if (isPlayingAudio || boardActive) return;
-    setIsPlayingAudio(true);
 
-    const onAudioStart = () => {
-      setBoardVisible(true);
+    const audioSrc = currentQuestion.audio || `/audio/army_alpha/soal_${currentQuestion.nomor}.mp3`;
+    const audio = new Audio(audioSrc);
+    audioRef.current = audio;
+
+    setIsPlayingAudio(true);
+    setBoardVisible(true);
+
+    const mulaiThreshold = currentQuestion.mulaiTime ?? 17.0;
+    const stopThreshold = currentQuestion.stopTime ?? (mulaiThreshold + currentQuestion.waktu);
+
+    let hasStartedWorking = false;
+    let hasStopped = false;
+
+    audio.ontimeupdate = () => {
+      const cur = audio.currentTime;
+
+      // When audio reaches the word 'Mulai'
+      if (cur >= mulaiThreshold && !hasStartedWorking && !hasStopped) {
+        hasStartedWorking = true;
+        setIsPlayingAudio(false);
+        setBoardActive(true);
+      }
+
+      // If in working phase, update countdown timer
+      if (hasStartedWorking && !hasStopped) {
+        const remaining = Math.max(0, Math.ceil(stopThreshold - cur));
+        setTimerSeconds(remaining);
+
+        if (cur >= stopThreshold) {
+          hasStopped = true;
+          setBoardActive(false);
+          setActiveSvgArea(null);
+          setTimerSeconds(0);
+          saveCurrentQuestionAnswers();
+        }
+      }
     };
 
-    const onMulai = () => {
+    audio.onended = () => {
+      setBoardActive(false);
+      setIsPlayingAudio(false);
+      setTimerSeconds(0);
+      setActiveSvgArea(null);
+      const updated = saveCurrentQuestionAnswers();
+
+      // Automatically advance to next question after audio finishes
+      setTimeout(() => {
+        if (currentIndex + 1 < questions.length) {
+          setCurrentIndex((prev) => prev + 1);
+        } else {
+          onFinishAlpha(updated);
+        }
+      }, 1500);
+    };
+
+    audio.onerror = () => {
+      // Fallback if audio file cannot be loaded
       setIsPlayingAudio(false);
       setBoardActive(true);
-
       const duration = currentQuestion.waktu;
       setTimerSeconds(duration);
 
@@ -123,7 +163,12 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
       }, 1000);
     };
 
-    speakInstruction(currentQuestion.instruksi, onAudioStart, onMulai);
+    audio.play().catch(() => {
+      // Browser autoplay policy blocked - activate fallback
+      setIsPlayingAudio(false);
+      setBoardActive(true);
+      setTimerSeconds(currentQuestion.waktu);
+    });
   };
 
   const saveCurrentQuestionAnswers = () => {
@@ -146,17 +191,13 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
   };
 
   const handleTimeExpired = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setBoardActive(false);
     setActiveSvgArea(null);
     const updated = saveCurrentQuestionAnswers();
-
-    if ('speechSynthesis' in window) {
-      try {
-        const stopUtterance = new SpeechSynthesisUtterance('Stop!');
-        stopUtterance.lang = 'id-ID';
-        window.speechSynthesis.speak(stopUtterance);
-      } catch (e) {}
-    }
 
     setTimeout(() => {
       if (currentIndex + 1 < questions.length) {
@@ -164,10 +205,14 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
       } else {
         onFinishAlpha(updated);
       }
-    }, 1000);
+    }, 1200);
   };
 
   const handleNextManual = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     clearInterval(timerIntervalRef.current);
     setBoardActive(false);
     setActiveSvgArea(null);
