@@ -234,7 +234,7 @@ export const apiService = {
   async submitExam(candidateAnswers: CandidateAnswers): Promise<{ success: boolean; message?: string }> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       const res = await fetch(GAS_API_URL, {
         method: 'POST',

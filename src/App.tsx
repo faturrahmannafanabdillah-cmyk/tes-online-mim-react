@@ -22,6 +22,7 @@ import {
   ScreenType,
 } from './types';
 import { apiService } from './services/api';
+import { cameraProctoringService } from './services/cameraProctoring';
 import {
   DEFAULT_POSITIONS,
   DEFAULT_ALPHA_QUESTIONS,
@@ -417,6 +418,8 @@ export const App: React.FC = () => {
         alpha: {},
         matematika: {},
         rac: {},
+        fotoSelfie: candidateData.fotoSelfie || candidateData.fotoBase64,
+        fotoProctoring: {},
       };
       setCandidateAnswers(updatedCandidateAnswers);
       candidateAnswersRef.current = updatedCandidateAnswers;
@@ -444,11 +447,18 @@ export const App: React.FC = () => {
   // TRANSITION HANDLERS (Tahap 1 -> Tahap 2 -> Tahap 3 -> Submit)
   // -------------------------------------------------------------
 
-  // Finish Tahap 1 -> Transition to Tahap 2 Instruction
+  // Finish Tahap 1 -> Transition to Tahap 2 Instruction (Jepret foto proctoring Tahap 1)
   const handleFinishAlpha = (alphaAnswers: Record<string, AlphaAnswerItem>) => {
+    const snapAlpha = cameraProctoringService.captureSnapshot(0.5);
+    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
+    if (snapAlpha) {
+      existingProctoring['tahap1_alpha'] = snapAlpha;
+    }
+
     const updated = {
       ...candidateAnswersRef.current,
       alpha: alphaAnswers,
+      fotoProctoring: existingProctoring,
     };
     setCandidateAnswers(updated);
     candidateAnswersRef.current = updated;
@@ -503,7 +513,7 @@ export const App: React.FC = () => {
     });
   };
 
-  // Finish Tahap 2 -> Transition to Tahap 3 Instruction
+  // Finish Tahap 2 -> Transition to Tahap 3 Instruction (Jepret foto proctoring Tahap 2)
   const handleFinishStage2MatDas = () => {
     const unanswered: number[] = [];
     const questionsToTest = dbData.matematika.length >= 18 ? dbData.matematika.slice(0, 18) : dbData.matematika;
@@ -522,6 +532,19 @@ export const App: React.FC = () => {
       );
       return;
     }
+
+    const snapMatDas = cameraProctoringService.captureSnapshot(0.5);
+    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
+    if (snapMatDas) {
+      existingProctoring['tahap2_matdas'] = snapMatDas;
+    }
+
+    const updated = {
+      ...candidateAnswersRef.current,
+      fotoProctoring: existingProctoring,
+    };
+    setCandidateAnswers(updated);
+    candidateAnswersRef.current = updated;
 
     setUnansweredList([]);
     alert('✅ Tahap 2 Selesai!\nSilakan lanjutkan ke petunjuk pelaksanaan Tahap 3.');
@@ -566,8 +589,15 @@ export const App: React.FC = () => {
     saveSession({ jawabanKandidat: updated });
   };
 
-  // Finish Tahap 3 -> Final Submission
+  // Finish Tahap 3 -> Final Submission (Jepret foto proctoring Tahap 3)
   const handleFinishRAC = () => {
+    const snapRAC = cameraProctoringService.captureSnapshot(0.5);
+    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
+    if (snapRAC) {
+      existingProctoring['tahap3_rac'] = snapRAC;
+    }
+    candidateAnswersRef.current.fotoProctoring = existingProctoring;
+
     submitFinalExam();
   };
 
@@ -578,6 +608,9 @@ export const App: React.FC = () => {
     tahapRef.current = 4;
     setCurrentScreen('lock');
     setLockStatus('submitting');
+
+    // Matikan stream kamera saat ujian selesai agar hemat baterai kandidat
+    cameraProctoringService.stopCamera();
 
     // Hitung skor MatDas secara presisi jika kunci tersedia di database lokal
     let skorMatDas = 0;

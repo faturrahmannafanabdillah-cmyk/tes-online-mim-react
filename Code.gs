@@ -574,13 +574,66 @@ function hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi
 }
 
 // =====================================================================
+// GOOGLE DRIVE PROCTORING STORAGE
+// =====================================================================
+var FOLDER_DRIVE_PROCTORING_ID = "1CrGGP8ZEk8J37bYaEbRmlViUb5n_ryW7";
+
+function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoProctoring) {
+  try {
+    if (!folderIndukId) return "-";
+    var folderInduk = DriveApp.getFolderById(folderIndukId);
+    if (!folderInduk) return "-";
+
+    // Buat subfolder khusus per-kandidat: [Nama] ([Token])
+    var namaClean = (namaKandidat || "Kandidat").replace(/[^a-zA-Z0-9 _-]/g, "");
+    var tokenClean = (token || "NO_TOKEN").replace(/[^a-zA-Z0-9_-]/g, "");
+    var namaFolder = namaClean + " (" + tokenClean + ")";
+    var subFolder = folderInduk.createFolder(namaFolder);
+
+    // 1. Simpan Foto Selfie Master Awal
+    if (fotoSelfie && typeof fotoSelfie === "string" && fotoSelfie.indexOf("base64,") !== -1) {
+      try {
+        var cleanSelfie = fotoSelfie.split("base64,")[1];
+        var decodedSelfie = Utilities.base64Decode(cleanSelfie);
+        var blobSelfie = Utilities.newBlob(decodedSelfie, "image/jpeg", "01_Selfie_Awal.jpg");
+        subFolder.createFile(blobSelfie);
+      } catch (errSelfie) {}
+    }
+
+    // 2. Simpan Foto-Foto Snapshot Proctoring Berkala
+    if (fotoProctoring && typeof fotoProctoring === "object") {
+      var stepIdx = 2;
+      for (var key in fotoProctoring) {
+        if (fotoProctoring.hasOwnProperty(key)) {
+          var dataFoto = fotoProctoring[key];
+          if (dataFoto && typeof dataFoto === "string" && dataFoto.indexOf("base64,") !== -1) {
+            try {
+              var cleanImg = dataFoto.split("base64,")[1];
+              var decodedImg = Utilities.base64Decode(cleanImg);
+              var fileName = "0" + stepIdx + "_" + key.replace(/[^a-zA-Z0-9_-]/g, "_") + ".jpg";
+              var blobImg = Utilities.newBlob(decodedImg, "image/jpeg", fileName);
+              subFolder.createFile(blobImg);
+              stepIdx++;
+            } catch (errSnap) {}
+          }
+        }
+      }
+    }
+
+    return subFolder.getUrl();
+  } catch (e) {
+    return "Error Drive: " + e.message;
+  }
+}
+
+// =====================================================================
 // SIMPAN HASIL AKHIR (PIPELINE 3 TAHAP: ARMY ALPHA, MATEMATIKA, RAC)
 // =====================================================================
 function simpanHasilUjian(dataKandidat) {
   var ss = SpreadsheetApp.openById("1J-Kxp7bmKqiLkkwQnk4YWxvQj7YQeOrZmc2sXNRsulA"); // GANTI ID SPREADSHEET JIKA PERLU
   var sheetHasil = ss.getSheetByName("HASIL_UJIAN");
 
-  // 1. Header Sheet HASIL_UJIAN 13 Kolom Sesuai Format Baru
+  // 1. Header Sheet HASIL_UJIAN 14 Kolom Termasuk Link Foto Proctoring
   var headerLengkap = [
     "Waktu Submit",
     "Nama",
@@ -594,18 +647,19 @@ function simpanHasilUjian(dataKandidat) {
     "Interpretasi RAC",
     "HASIL AKHIR",
     "Status Pelanggaran",
+    "Link Foto Proctoring",
     "Log Detail Jawaban"
   ];
 
   if (!sheetHasil) {
     sheetHasil = ss.insertSheet("HASIL_UJIAN");
     sheetHasil.appendRow(headerLengkap);
-    sheetHasil.getRange("A1:M1").setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
+    sheetHasil.getRange("A1:N1").setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
     sheetHasil.setFrozenRows(1);
   } else {
     var lastCol = sheetHasil.getLastColumn();
     var firstRow = sheetHasil.getRange(1, 1, 1, Math.max(lastCol, headerLengkap.length)).getValues()[0];
-    if (lastCol !== headerLengkap.length || firstRow[4] !== "Skor Army Alpha") {
+    if (lastCol !== headerLengkap.length || firstRow[12] !== "Link Foto Proctoring") {
       sheetHasil.getRange(1, 1, 1, headerLengkap.length).setValues([headerLengkap]);
       sheetHasil.getRange(1, 1, 1, headerLengkap.length).setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
     }
@@ -614,7 +668,7 @@ function simpanHasilUjian(dataKandidat) {
   var sheetMatematika = ss.getSheetByName("SOAL_HITUNGAN") || ss.getSheetByName("SOAL_MATEMATIKA");
   var dataSheetMatematika = sheetMatematika ? sheetMatematika.getDataRange().getValues() : [];
 
-  // 2. Hitung Skor & Log Masing-Masing Subtes (Siap menerima skor langsung atau dari array jawaban)
+  // 2. Hitung Skor & Log Masing-Masing Subtes
   // --- Tahap 1: Army Alpha ---
   var skorAlpha = 0;
   var logAlpha = "-";
@@ -665,12 +719,21 @@ function simpanHasilUjian(dataKandidat) {
   // 5. Penentuan HASIL AKHIR
   var hasilAkhir = hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi);
 
-  // 6. Log Detail Gabungan
+  // 6. Simpan Foto Proctoring ke Google Drive Folder
+  var linkFotoDrive = simpanFotoKeDrive(
+    FOLDER_DRIVE_PROCTORING_ID,
+    dataKandidat.nama,
+    dataKandidat.token,
+    dataKandidat.fotoSelfie,
+    dataKandidat.fotoProctoring
+  );
+
+  // 7. Log Detail Gabungan
   var logDetailJawaban = "[ALPHA] " + logAlpha + " | [MATDAS] " + logMatDas + " | [RAC] " + logRAC;
 
   var waktuSubmitDetail = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
 
-  // 7. Simpan Baris Data Baru ke Spreadsheet
+  // 8. Simpan Baris Data Baru ke Spreadsheet
   sheetHasil.appendRow([
     waktuSubmitDetail,
     dataKandidat.nama,
@@ -684,10 +747,11 @@ function simpanHasilUjian(dataKandidat) {
     interpRAC,
     hasilAkhir,
     statusPelanggaran,
+    linkFotoDrive,
     logDetailJawaban
   ]);
 
-  // 8. Update Status Token -> SELESAI
+  // 9. Update Status Token -> SELESAI
   var sheetToken = ss.getSheetByName("DATA_TOKEN");
   if (sheetToken) {
     var dataToken = sheetToken.getDataRange().getValues();

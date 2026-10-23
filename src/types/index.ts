@@ -49,6 +49,7 @@ export interface CandidateInfo {
   posisi: string;
   token: string;
   fotoBase64?: string;
+  fotoSelfie?: string;
 }
 
 export interface AlphaAnswerItem {
@@ -73,6 +74,8 @@ export interface CandidateAnswers {
   skorAlpha?: number;
   skorMatDas?: number;
   skorRAC?: number;
+  fotoSelfie?: string;
+  fotoProctoring?: Record<string, string>;
 }
 
 export type ScreenType =

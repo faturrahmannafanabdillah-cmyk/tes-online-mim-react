@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, CheckCircle2, AlertCircle, FileCheck, ShieldAlert, Sparkles, Smartphone } from 'lucide-react';
+import { Camera, CheckCircle2, AlertCircle, FileCheck, ShieldAlert, Smartphone, Video, Lock, RotateCcw, X } from 'lucide-react';
 import { CandidateInfo } from '../../types';
+import { cameraProctoringService } from '../../services/cameraProctoring';
 
 interface IntroScreenProps {
   positions: string[];
@@ -27,6 +28,12 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
   const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [selfieError, setSelfieError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+
+  // Modal Camera Proctoring Assistant untuk kandidat gaptek
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [cameraStep, setCameraStep] = useState<'pre_guide' | 'streaming' | 'blocked' | 'error'>('pre_guide');
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
+  const liveVideoRef = useRef<HTMLVideoElement>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,9 +103,48 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
     }
   };
 
-  const handleTriggerSelfie = () => {
+  const handleOpenLiveCamera = () => {
     if (!agreed) return;
-    fileInputRef.current?.click();
+    setIsCameraModalOpen(true);
+    setCameraStep('pre_guide');
+    setSelfieError(null);
+  };
+
+  const handleRequestCameraPermission = async () => {
+    setIsStartingCamera(true);
+    const res = await cameraProctoringService.requestCamera();
+    setIsStartingCamera(false);
+
+    if (res.success && res.stream) {
+      setCameraStep('streaming');
+      setTimeout(() => {
+        if (liveVideoRef.current && res.stream) {
+          liveVideoRef.current.srcObject = res.stream;
+          liveVideoRef.current.play().catch(() => {});
+        }
+      }, 100);
+    } else {
+      if (res.errorType === 'PERMISSION_DENIED') {
+        setCameraStep('blocked');
+      } else {
+        setCameraStep('error');
+        setSelfieError(res.errorMessage || 'Kamera tidak dapat diakses.');
+      }
+    }
+  };
+
+  const handleSnapFromLiveCamera = () => {
+    const snap = cameraProctoringService.captureSnapshot(0.65);
+    if (snap) {
+      setSelfieDataUrl(snap);
+      setIsCameraModalOpen(false);
+    } else {
+      alert('Gagal mengambil foto. Pastikan wajah terlihat jelas di kamera.');
+    }
+  };
+
+  const handleTriggerSelfie = () => {
+    handleOpenLiveCamera();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -121,6 +167,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
       email: email.trim(),
       posisi,
       fotoBase64: selfieDataUrl,
+      fotoSelfie: selfieDataUrl,
     });
   };
 
@@ -313,36 +360,49 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
                     alt="Preview Selfie Kandidat"
                     className="w-full h-48 sm:h-56 object-cover"
                   />
-                  <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 text-white text-xs py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Wajah Terverifikasi untuk Proctoring
+                  <div className="absolute bottom-2 left-2 right-2 bg-slate-900/85 text-white text-xs py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Wajah & Kamera Terverifikasi</span>
                   </div>
                 </div>
 
-                <div className="text-center">
+                <div className="flex justify-center gap-3 text-center">
                   <button
                     type="button"
                     onClick={handleTriggerSelfie}
-                    className="text-xs text-[#0056b3] font-semibold underline hover:text-[#003d80]"
+                    className="text-xs text-[#0056b3] font-bold underline hover:text-[#003d80] cursor-pointer"
                   >
-                    Ambil Ulang Foto Selfie
+                    🔄 Ambil Ulang Foto Wajah
                   </button>
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleTriggerSelfie}
-                disabled={!agreed || isCompressing}
-                className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-sm ${
-                  agreed
-                    ? 'bg-[#16a34a] hover:bg-emerald-700 text-white cursor-pointer active:scale-[0.99]'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                <Camera className="w-5 h-5" />
-                {isCompressing ? '⏳ Mengompresi Foto...' : '📸 Ambil Foto Selfie (Kamera / Unggah)'}
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleOpenLiveCamera}
+                  disabled={!agreed}
+                  className={`w-full py-4 px-4 rounded-xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2.5 transition shadow-sm touch-manipulation min-h-[52px] ${
+                    agreed
+                      ? 'bg-[#16a34a] hover:bg-emerald-700 text-white cursor-pointer active:scale-[0.99] shadow-emerald-700/20'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Camera className="w-5 h-5 shrink-0" />
+                  <span>📸 Aktifkan Kamera & Foto Wajah</span>
+                </button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!agreed}
+                    className="text-[11px] text-slate-400 hover:text-slate-600 underline font-medium cursor-pointer"
+                  >
+                    Kendala kamera otomatis? Klik di sini untuk unggah foto manual
+                  </button>
+                </div>
+              </div>
             )}
 
             {selfieError && (
@@ -352,7 +412,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
             )}
 
             <p className="text-[11px] text-slate-400 text-center mt-2.5 leading-normal">
-              *Foto digunakan oleh HRD PT Multi Indomandiri sebagai validasi kehadiran peserta tes proctoring.
+              *Foto dan kamera proctoring digunakan untuk verifikasi kehadiran dan integritas tes oleh HRD PT Multi Indomandiri.
             </p>
           </div>
 
@@ -361,7 +421,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
             <button
               type="submit"
               disabled={!isFormComplete || isLoading}
-              className={`w-full py-3.5 sm:py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg transition-all shadow-md flex items-center justify-center gap-2 ${
+              className={`w-full py-3.5 sm:py-4 px-6 rounded-xl font-extrabold text-base sm:text-lg transition-all shadow-md flex items-center justify-center gap-2 touch-manipulation min-h-[52px] ${
                 isFormComplete && !isLoading
                   ? 'bg-[#0056b3] hover:bg-[#003d80] text-white cursor-pointer shadow-[#0056b3]/25 hover:shadow-lg active:scale-[0.99]'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
@@ -373,7 +433,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
                   <span>Memverifikasi Token ke Server...</span>
                 </>
               ) : !selfieDataUrl ? (
-                'Ambil Foto Selfie Terlebih Dahulu'
+                'Ambil Foto Wajah Terlebih Dahulu'
               ) : (
                 '🚀 Verifikasi Token & Mulai Ujian'
               )}
@@ -381,6 +441,190 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
           </div>
         </div>
       </form>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL PANDUAN IZIN KAMERA KHUSUS KANDIDAT GAPTEK */}
+      {/* ------------------------------------------------------------- */}
+      {isCameraModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative overflow-hidden space-y-4">
+            {/* Close modal button */}
+            <button
+              type="button"
+              onClick={() => {
+                cameraProctoringService.stopCamera();
+                setIsCameraModalOpen(false);
+              }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* STEP 1: PRE-PERMISSION GUIDANCE (PANDUAN SEBELUM POP-UP) */}
+            {cameraStep === 'pre_guide' && (
+              <div className="text-center space-y-4 pt-2">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-[#16a34a] shadow-inner">
+                  <Video className="w-8 h-8" />
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">
+                    Langkah 1: Izinkan Akses Kamera
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Ujian ini menggunakan kamera depan untuk memastikan Anda mengerjakan secara mandiri (anti-joki).
+                  </p>
+                </div>
+
+                {/* Ilustrasi Pop-up agar kandidat tidak kaget */}
+                <div className="bg-blue-50 border-2 border-dashed border-blue-200 rounded-xl p-3.5 text-left text-xs text-slate-700 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-[#0056b3]">
+                    <Smartphone className="w-4 h-4 shrink-0" />
+                    <span>Petunjuk Mudah:</span>
+                  </div>
+                  <p className="leading-normal">
+                    Setelah tombol hijau di bawah ditekan, layar HP Anda akan menampilkan kotak izin browser. Silakan ketuk tombol:
+                  </p>
+                  <div className="bg-white border border-slate-300 rounded-lg p-2 text-center font-black text-emerald-600 shadow-sm">
+                    [ IZINKAN ] atau [ ALLOW ]
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRequestCameraPermission}
+                  disabled={isStartingCamera}
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#16a34a] hover:bg-emerald-700 text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95 min-h-[48px]"
+                >
+                  {isStartingCamera ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Membuka Kamera...</span>
+                    </>
+                  ) : (
+                    <span>Saya Siap, Buka Kamera Sekarang 📸</span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* STEP 2: LIVE STREAMING & CAPTURE */}
+            {cameraStep === 'streaming' && (
+              <div className="space-y-4 text-center">
+                <div className="relative rounded-2xl overflow-hidden bg-slate-900 border-2 border-[#0056b3] shadow-md aspect-[4/3] flex items-center justify-center">
+                  <video
+                    ref={liveVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover -scale-x-100"
+                  />
+                  {/* Oval Face Guide Overlay */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-44 h-56 border-2 border-dashed border-white/80 rounded-[50%] shadow-lg" />
+                  </div>
+                  <div className="absolute bottom-2 inset-x-2 bg-slate-900/80 text-white text-[11px] py-1 rounded text-center">
+                    Posisikan wajah Anda tepat di dalam bingkai
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSnapFromLiveCamera}
+                  className="w-full py-4 px-6 rounded-xl bg-[#0056b3] hover:bg-[#003d80] text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-900/25 cursor-pointer active:scale-95 min-h-[52px]"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Jepret Foto Wajah Sekarang 🔘</span>
+                </button>
+              </div>
+            )}
+
+            {/* STEP 3: BLOCKED RESCUE GUIDE (JIKA KANDIDAT KEPENCET TOLAK) */}
+            {cameraStep === 'blocked' && (
+              <div className="space-y-4 text-center">
+                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto text-[#dc3545]">
+                  <Lock className="w-7 h-7" />
+                </div>
+
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-800">
+                    Kamera Terblokir di HP Anda
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Jangan khawatir! Ikuti 3 langkah mudah berikut untuk mengizinkan kembali:
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left text-xs text-slate-700 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#0056b3] text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      1
+                    </span>
+                    <span>Ketuk ikon <b>Gembok 🔒</b> di pojok kiri atas samping alamat web browser.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#0056b3] text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      2
+                    </span>
+                    <span>Pilih menu <b>Izin Situs (Permissions)</b> atau <b>Kamera</b>.</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-[#0056b3] text-white font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      3
+                    </span>
+                    <span>Ubah dari <b>"Blokir"</b> menjadi <b>"Izinkan / Allow"</b>.</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleRequestCameraPermission}
+                    className="w-full py-3.5 px-4 rounded-xl bg-[#0056b3] hover:bg-[#003d80] text-white font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Sudah Saya Ubah, Coba Buka Kamera Lagi</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCameraModalOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full py-2.5 text-xs text-slate-500 hover:text-slate-800 font-bold underline"
+                  >
+                    Atau Unggah Foto Selfie Manual dari Galeri
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: GENERAL ERROR */}
+            {cameraStep === 'error' && (
+              <div className="space-y-4 text-center">
+                <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
+                  <AlertCircle className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Kamera Tidak Merespons</h3>
+                  <p className="text-xs text-slate-500 mt-1">{selfieError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCameraModalOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-[#0056b3] text-white text-xs font-bold"
+                >
+                  Gunakan Pengambilan Foto Manual
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
