@@ -720,6 +720,14 @@ export const App: React.FC = () => {
             onFinishStage={handleFinishStage2MatDas}
             unansweredList={unansweredList}
             isSubmitting={isSubmitting}
+            initialPaketName={paketMatematikaName}
+            onQuestionsUpdated={(newQuestions, packageName) => {
+              setPaketMatematikaName(packageName);
+              setDbData((prev) => ({ ...prev, matematika: newQuestions }));
+              saveSession({
+                dbData: { ...dbData, matematika: newQuestions },
+              });
+            }}
           />
         )}
 

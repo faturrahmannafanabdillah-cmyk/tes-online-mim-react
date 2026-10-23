@@ -81,6 +81,93 @@ export const apiService = {
   },
 
   /**
+   * Fetch dynamic questions for Matematika Dasar (MatDas) from Google Apps Script
+   */
+  async fetchMatDasQuestions(paket?: string): Promise<{
+    paketList: string[];
+    paketTerpilih: string;
+    questions: QuestionItem[];
+  }> {
+    const query = paket ? `&paket=${encodeURIComponent(paket)}` : '';
+    const url = `${GAS_API_URL}?action=getSoalMatDas${query}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rawData = await res.json();
+
+      let items: any[] = [];
+      let paketTerpilih = paket || 'Paket A';
+      let paketList: string[] = [];
+
+      if (Array.isArray(rawData)) {
+        items = rawData;
+      } else if (rawData && Array.isArray(rawData.soal)) {
+        items = rawData.soal;
+        paketTerpilih = rawData.paketTerpilih || paketTerpilih;
+        paketList = rawData.paketTersedia || [];
+      } else if (rawData && Array.isArray(rawData.data)) {
+        items = rawData.data;
+        paketTerpilih = rawData.paketTerpilih || paketTerpilih;
+        paketList = rawData.paketTersedia || [];
+      }
+
+      if (items.length > 0) {
+        if (paketList.length === 0) {
+          const pSet = new Set<string>();
+          items.forEach((it) => {
+            if (it.paket) pSet.add(it.paket);
+          });
+          paketList = Array.from(pSet);
+        }
+
+        // Filter for active package
+        if (paketList.length > 0 && (!paket || !items.every((it) => it.paket === paket))) {
+          if (!paket) {
+            paketTerpilih = paketList[Math.floor(Math.random() * paketList.length)];
+          }
+          items = items.filter((it) => !it.paket || it.paket === paketTerpilih);
+        }
+
+        const formattedQuestions: QuestionItem[] = items.map((it, idx) => ({
+          id: it.id || `MTK_${idx + 1}`,
+          soal: it.soal || `Soal ${idx + 1}`,
+          opsi: Array.isArray(it.opsi) ? it.opsi : [],
+          kategori: it.paket || paketTerpilih,
+        }));
+
+        if (formattedQuestions.length > 0) {
+          return {
+            paketList: paketList.length > 0 ? paketList : ['Paket A', 'Paket B', 'Paket C'],
+            paketTerpilih,
+            questions: formattedQuestions,
+          };
+        }
+      }
+
+      // Fallback if empty sheet
+      const fallback = this.getRandomMatematikaPack();
+      return {
+        paketList: ['Paket A', 'Paket B', 'Paket C'],
+        paketTerpilih: fallback.namaPaket,
+        questions: fallback.soal,
+      };
+    } catch (err) {
+      console.warn('Fetch MatDas questions fallback:', err);
+      const fallback = this.getRandomMatematikaPack();
+      return {
+        paketList: ['Paket A', 'Paket B', 'Paket C'],
+        paketTerpilih: fallback.namaPaket,
+        questions: fallback.soal,
+      };
+    }
+  },
+
+  /**
    * Verify token, candidate info, and initialize 3-stage test questions
    */
   async verifyCandidate(params: {

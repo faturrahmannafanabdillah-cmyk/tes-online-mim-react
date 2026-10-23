@@ -23,6 +23,11 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
   
+  if (action === 'getSoalMatDas') {
+    return ContentService.createTextOutput(JSON.stringify(getSoalMatDas(e.parameter.paket)))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
   return ContentService.createTextOutput(JSON.stringify({error: "Endpoint GET tidak valid"}))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -32,6 +37,11 @@ function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents);
     var action = payload.action;
+
+    if (action === 'getSoalMatDas') {
+      return ContentService.createTextOutput(JSON.stringify(getSoalMatDas(payload.paket)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (action === 'verifikasi') {
       var result = verifikasiDanAmbilSoal(payload.token, payload.nama, payload.email, payload.posisi, payload.deviceId);
@@ -160,7 +170,7 @@ function verifikasiDanAmbilSoal(tokenInput, nama, email, posisi, deviceId) {
     }
 
     // === 4. SEDOT SOAL MATEMATIKA DASAR (3 PAKET: Paket A, Paket B, Paket C) ===
-    var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA");
+    var sheetMatematika = ss.getSheetByName("SOAL_HITUNGAN") || ss.getSheetByName("SOAL_MATEMATIKA");
     var paketTerpilihNama = "Paket A";
     var soalMatematikaList = [];
 
@@ -204,6 +214,85 @@ function verifikasiDanAmbilSoal(tokenInput, nama, email, posisi, deviceId) {
   } catch(e) {
     return { error: "💥 Terjadi kesalahan sistem: " + e.message };
   }
+}
+
+// =====================================================================
+// FETCH SOAL MATEMATIKA DASAR SECARA DINAMIS (SHEET: SOAL_HITUNGAN)
+// Kolom A: Paket Soal
+// Kolom B: Teks Soal
+// Kolom C, D, E, F, G: Pilihan Ganda (A, B, C, D, E)
+// Kolom H: Kunci Jawaban (DISEMBUNYIKAN / TIDAK DIKIRIM KE FRONTEND)
+// =====================================================================
+function getSoalMatDas(paketInput) {
+  var ss = SpreadsheetApp.openById("1J-Kxp7bmKqiLkkwQnk4YWxvQj7YQeOrZmc2sXNRsulA"); // GANTI ID SPREADSHEET JIKA PERLU
+  var sheet = ss.getSheetByName("SOAL_HITUNGAN") || ss.getSheetByName("SOAL_MATEMATIKA");
+
+  if (!sheet) {
+    return {
+      success: false,
+      error: "Sheet SOAL_HITUNGAN tidak ditemukan.",
+      soal: []
+    };
+  }
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return {
+      success: false,
+      error: "Data soal kosong pada sheet SOAL_HITUNGAN.",
+      soal: []
+    };
+  }
+
+  // 1. Identifikasi daftar paket unik yang tersedia
+  var paketTersedia = [];
+  for (var i = 1; i < data.length; i++) {
+    var p = (data[i][0] || "").toString().trim();
+    if (p !== "" && paketTersedia.indexOf(p) === -1) {
+      paketTersedia.push(p);
+    }
+  }
+
+  // 2. Tentukan paket yang dipilih (filter spesifik atau acak dari paket tersedia)
+  var paketTerpilih = (paketInput && paketInput.toString().trim() !== "")
+    ? paketInput.toString().trim()
+    : (paketTersedia.length > 0 ? paketTersedia[Math.floor(Math.random() * paketTersedia.length)] : "Paket A");
+
+  var listSoal = [];
+  for (var r = 1; r < data.length; r++) {
+    var rowPaket = (data[r][0] || "").toString().trim();
+
+    if (rowPaket === paketTerpilih || paketTersedia.length === 0) {
+      var teksSoal = (data[r][1] || "").toString().trim();
+      if (teksSoal === "") continue;
+
+      var opsiArr = [];
+      for (var c = 2; c <= 6; c++) {
+        var optVal = (data[r][c] !== undefined && data[r][c] !== null) ? data[r][c].toString().trim() : "";
+        if (optVal !== "" && optVal !== "-") {
+          opsiArr.push(optVal);
+        }
+      }
+
+      // CATATAN KEAMANAN:
+      // Kolom H (data[r][7]) adalah Kunci Jawaban.
+      // Kunci INI SENGAJA TIDAK DIKIRIM ke frontend agar tidak dapat dibaca di DevTools browser!
+      // Kunci tetap aman tersimpan di spreadsheet untuk divalidasi oleh fungsi simpanHasilUjian.
+      listSoal.push({
+        id: "MTK_" + (r + 1),
+        paket: rowPaket || paketTerpilih,
+        soal: teksSoal,
+        opsi: opsiArr
+      });
+    }
+  }
+
+  return {
+    success: true,
+    paketTerpilih: paketTerpilih,
+    paketTersedia: paketTersedia,
+    soal: listSoal
+  };
 }
 
 // =====================================================================
@@ -522,7 +611,7 @@ function simpanHasilUjian(dataKandidat) {
     }
   }
 
-  var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA");
+  var sheetMatematika = ss.getSheetByName("SOAL_HITUNGAN") || ss.getSheetByName("SOAL_MATEMATIKA");
   var dataSheetMatematika = sheetMatematika ? sheetMatematika.getDataRange().getValues() : [];
 
   // 2. Hitung Skor & Log Masing-Masing Subtes (Siap menerima skor langsung atau dari array jawaban)
