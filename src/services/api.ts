@@ -119,7 +119,7 @@ export const apiService = {
       }
 
       // If backend returns dynamic matematika questions:
-      const backendMatematika = data.matematika || data.hitungan || null;
+      const backendMatematika = data.matematika || null;
 
       return {
         alpha: DEFAULT_ALPHA_QUESTIONS,

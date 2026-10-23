@@ -67,6 +67,9 @@ export interface CandidateAnswers {
   alpha: Record<string, AlphaAnswerItem>;
   matematika: Record<string, string>;
   rac: Record<string, 'SAMA' | 'TIDAK SAMA'>;
+  skorAlpha?: number;
+  skorMatDas?: number;
+  skorRAC?: number;
 }
 
 export type ScreenType =

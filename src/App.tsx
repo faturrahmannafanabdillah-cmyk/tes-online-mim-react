@@ -579,8 +579,37 @@ export const App: React.FC = () => {
     setCurrentScreen('lock');
     setLockStatus('submitting');
 
+    // Hitung skor MatDas secara presisi jika kunci tersedia di database lokal
+    let skorMatDas = 0;
+    if (dbData.matematika && dbData.matematika.length > 0) {
+      dbData.matematika.forEach((q) => {
+        const userAns = candidateAnswersRef.current.matematika[q.id];
+        if (userAns && q.kunci && userAns.trim().toLowerCase() === q.kunci.trim().toLowerCase()) {
+          skorMatDas++;
+        }
+      });
+    }
+
+    // Hitung skor RAC secara presisi
+    let skorRAC = 0;
+    if (dbData.rac && dbData.rac.length > 0) {
+      dbData.rac.forEach((q) => {
+        const userAns = candidateAnswersRef.current.rac[q.id];
+        if (userAns && userAns === q.kunci) {
+          skorRAC++;
+        }
+      });
+    }
+
+    const finalPayload: CandidateAnswers = {
+      ...candidateAnswersRef.current,
+      skorMatDas,
+      skorRAC,
+    };
+    candidateAnswersRef.current = finalPayload;
+
     try {
-      await apiService.submitExam(candidateAnswersRef.current);
+      await apiService.submitExam(finalPayload);
       setLockStatus('success');
       clearSession();
     } catch (err) {

@@ -160,7 +160,7 @@ function verifikasiDanAmbilSoal(tokenInput, nama, email, posisi, deviceId) {
     }
 
     // === 4. SEDOT SOAL MATEMATIKA DASAR (3 PAKET: Paket A, Paket B, Paket C) ===
-    var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA") || ss.getSheetByName("SOAL_HITUNGAN");
+    var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA");
     var paketTerpilihNama = "Paket A";
     var soalMatematikaList = [];
 
@@ -369,87 +369,235 @@ function koreksiRAC(jawabanRAC) {
 }
 
 // =====================================================================
+// KOREKSI MATEMATIKA DASAR
+// =====================================================================
+function koreksiMatematika(dataJawabanUser, dataSheet) {
+  if (!dataJawabanUser) {
+    return { skor: 0, total: 0, log: "Tidak Dikerjakan" };
+  }
+
+  // Kunci cadangan untuk Paket A, B, C jika sheet SOAL_MATEMATIKA belum diisi
+  var defaultKunciMtk = {
+    // Paket A
+    "MTK_A_01": "45", "MTK_A_02": "20 menit", "MTK_A_03": "49", "MTK_A_04": "6.000 karton",
+    "MTK_A_05": "97%", "MTK_A_06": "127", "MTK_A_07": "3 jam", "MTK_A_08": "Rp 2.100.000",
+    "MTK_A_09": "125", "MTK_A_10": "240 meter",
+    // Paket B
+    "MTK_B_01": "100", "MTK_B_02": "191", "MTK_B_03": "6,67 unit", "MTK_B_04": "140 kg",
+    "MTK_B_05": "-24", "MTK_B_06": "4.600 botol", "MTK_B_07": "13/20", "MTK_B_08": "2.200 kg",
+    "MTK_B_09": "18", "MTK_B_10": "Rp 180.000",
+    // Paket C
+    "MTK_C_01": "486", "MTK_C_02": "70", "MTK_C_03": "6 kemasan", "MTK_C_04": "16%",
+    "MTK_C_05": "2,5", "MTK_C_06": "210 m²", "MTK_C_07": "1.700", "MTK_C_08": "12 unit",
+    "MTK_C_09": "240", "MTK_C_10": "500 liter"
+  };
+
+  var benar = 0;
+  var totalSoal = 0;
+  var detailLog = [];
+
+  for (var key in dataJawabanUser) {
+    if (dataJawabanUser.hasOwnProperty(key)) {
+      totalSoal++;
+      var jawabanUser = (dataJawabanUser[key] || "").toString().trim().toLowerCase();
+      var kunciJawaban = "";
+
+      // 1. Cek dari sheet SOAL_MATEMATIKA (kolom H / index 7) jika ada
+      if (dataSheet && dataSheet.length > 1) {
+        var parts = key.split("_");
+        var barisExcel = parseInt(parts[parts.length - 1]) - 1;
+        if (!isNaN(barisExcel) && dataSheet[barisExcel] && dataSheet[barisExcel][7]) {
+          kunciJawaban = dataSheet[barisExcel][7].toString().trim().toLowerCase();
+        }
+      }
+
+      // 2. Jika tidak ditemukan di sheet, cek kunci default
+      if (!kunciJawaban && defaultKunciMtk[key]) {
+        kunciJawaban = defaultKunciMtk[key].toString().trim().toLowerCase();
+      }
+
+      if (kunciJawaban !== "" && jawabanUser === kunciJawaban) {
+        benar++;
+        detailLog.push(key + ":B");
+      } else {
+        detailLog.push(key + ":S(" + (jawabanUser === "-" || !jawabanUser ? "Kosong" : jawabanUser) + ")");
+      }
+    }
+  }
+
+  return {
+    skor: benar,
+    total: totalSoal,
+    log: detailLog.join(" | ")
+  };
+}
+
+// =====================================================================
+// FUNGSI INTERPRETASI SKOR PSIKOTES (ALPHA, MATDAS, RAC)
+// =====================================================================
+function getInterpretasiAlpha(skor) {
+  var s = Number(skor) || 0;
+  if (s <= 0) return "Kurang Sekali";
+  if (s <= 2) return "Kurang";
+  if (s <= 5) return "Cukup";
+  if (s <= 8) return "Baik";
+  return "Baik Sekali"; // > 8
+}
+
+function getInterpretasiMatDas(skor) {
+  var s = Number(skor) || 0;
+  if (s <= 4) return "Kurang Sekali";
+  if (s <= 8) return "Kurang";
+  if (s <= 12) return "Cukup";
+  if (s <= 16) return "Baik";
+  return "Baik Sekali"; // > 16
+}
+
+function getInterpretasiRAC(skor) {
+  var s = Number(skor) || 0;
+  if (s <= 15) return "Kurang Sekali";
+  if (s <= 21) return "Kurang";
+  if (s <= 25) return "Cukup";
+  if (s <= 31) return "Baik";
+  return "Baik Sekali"; // > 31
+}
+
+function isMinimalCukup(interpretasi) {
+  return interpretasi === "Cukup" || interpretasi === "Baik" || interpretasi === "Baik Sekali";
+}
+
+function hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi) {
+  if (isDiskualifikasi) {
+    return "Tidak Lulus";
+  }
+  var alphaCukup = isMinimalCukup(interpAlpha);
+  var matDasCukup = isMinimalCukup(interpMatDas);
+  var racCukup = isMinimalCukup(interpRAC);
+
+  if (alphaCukup && matDasCukup && racCukup) {
+    return "Lulus";
+  }
+  if (alphaCukup && racCukup && !matDasCukup) {
+    return "Dipertimbangkan untuk Helper";
+  }
+  return "Tidak Lulus";
+}
+
+// =====================================================================
 // SIMPAN HASIL AKHIR (PIPELINE 3 TAHAP: ARMY ALPHA, MATEMATIKA, RAC)
 // =====================================================================
 function simpanHasilUjian(dataKandidat) {
   var ss = SpreadsheetApp.openById("1J-Kxp7bmKqiLkkwQnk4YWxvQj7YQeOrZmc2sXNRsulA"); // GANTI ID SPREADSHEET JIKA PERLU
   var sheetHasil = ss.getSheetByName("HASIL_UJIAN");
 
+  // 1. Header Sheet HASIL_UJIAN 13 Kolom Sesuai Format Baru
   var headerLengkap = [
-    "Waktu Submit", "Nama", "Email", "Posisi",
-    "Skor Total (%)", "Army Alpha (12)", "Matematika (%)", "RAC Ketelitian (%)",
-    "Detail Army Alpha", "Detail Matematika", "Detail RAC", "Status Pelanggaran"
+    "Waktu Submit",
+    "Nama",
+    "Email",
+    "Posisi",
+    "Skor Army Alpha",
+    "Interpretasi Alpha",
+    "Skor MatDas",
+    "Interpretasi MatDas",
+    "Skor RAC",
+    "Interpretasi RAC",
+    "HASIL AKHIR",
+    "Status Pelanggaran",
+    "Log Detail Jawaban"
   ];
 
   if (!sheetHasil) {
     sheetHasil = ss.insertSheet("HASIL_UJIAN");
     sheetHasil.appendRow(headerLengkap);
-    sheetHasil.getRange("A1:L1").setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
+    sheetHasil.getRange("A1:M1").setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
     sheetHasil.setFrozenRows(1);
   } else {
     var lastCol = sheetHasil.getLastColumn();
-    if (lastCol <= 10) {
+    var firstRow = sheetHasil.getRange(1, 1, 1, Math.max(lastCol, headerLengkap.length)).getValues()[0];
+    if (lastCol !== headerLengkap.length || firstRow[4] !== "Skor Army Alpha") {
       sheetHasil.getRange(1, 1, 1, headerLengkap.length).setValues([headerLengkap]);
       sheetHasil.getRange(1, 1, 1, headerLengkap.length).setFontWeight("bold").setBackground("#0056b3").setFontColor("white");
     }
   }
 
-  var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA") || ss.getSheetByName("SOAL_HITUNGAN");
+  var sheetMatematika = ss.getSheetByName("SOAL_MATEMATIKA");
   var dataSheetMatematika = sheetMatematika ? sheetMatematika.getDataRange().getValues() : [];
 
-  function koreksiMatematika(dataJawabanUser, dataSheet) {
-    if (!dataJawabanUser) return { skor: 0, skorPersen: 0, log: "-" };
-    var benar = 0; var totalSoal = 0; var detailLog = [];
-    for (var key in dataJawabanUser) {
-      if (dataJawabanUser.hasOwnProperty(key)) {
-        totalSoal++;
-        var parts = key.split("_");
-        var barisExcel = parseInt(parts[parts.length - 1]) - 1;
-        var kunciJawaban = (dataSheet[barisExcel] && dataSheet[barisExcel][7]) ? dataSheet[barisExcel][7].toString().trim().toLowerCase() : "";
-        var jawabanUser  = dataJawabanUser[key].toString().trim().toLowerCase();
-
-        if (kunciJawaban !== "" && jawabanUser === kunciJawaban) {
-          benar++;
-          detailLog.push("Brs" + (barisExcel + 1) + ":BENAR");
-        } else {
-          detailLog.push("Brs" + (barisExcel + 1) + ":SALAH(" + (jawabanUser === "-" ? "Kosong" : jawabanUser) + ")");
-        }
-      }
-    }
-    var persen = totalSoal > 0 ? Math.round((benar / totalSoal) * 100) : 0;
-    return { skor: benar, skorPersen: persen, log: detailLog.join(" | ") };
+  // 2. Hitung Skor & Log Masing-Masing Subtes (Siap menerima skor langsung atau dari array jawaban)
+  // --- Tahap 1: Army Alpha ---
+  var skorAlpha = 0;
+  var logAlpha = "-";
+  if (dataKandidat.skorAlpha !== undefined && dataKandidat.skorAlpha !== null) {
+    skorAlpha = Number(dataKandidat.skorAlpha) || 0;
+    logAlpha = "Skor: " + skorAlpha + "/12";
+  } else {
+    var resAlpha = koreksiArmyAlpha(dataKandidat.alpha);
+    skorAlpha = resAlpha.skor;
+    logAlpha = resAlpha.log;
   }
 
-  // Koreksi Ketiga Tahap
-  var hasilAlpha      = koreksiArmyAlpha(dataKandidat.alpha);
-  var hasilMatematika = koreksiMatematika(dataKandidat.matematika, dataSheetMatematika);
-  var hasilRAC        = koreksiRAC(dataKandidat.rac);
+  // --- Tahap 2: Matematika Dasar ---
+  var skorMatDas = 0;
+  var logMatDas = "-";
+  if (dataKandidat.skorMatDas !== undefined && dataKandidat.skorMatDas !== null) {
+    skorMatDas = Number(dataKandidat.skorMatDas) || 0;
+    logMatDas = "Skor: " + skorMatDas;
+  } else {
+    var resMatematika = koreksiMatematika(dataKandidat.matematika, dataSheetMatematika);
+    skorMatDas = resMatematika.skor;
+    logMatDas = resMatematika.log;
+  }
 
-  // Rata-rata Skor Total (%) dari ketiga tahapan
-  var totalSkor = Math.round((hasilAlpha.skorPersen + hasilMatematika.skorPersen + hasilRAC.skorPersen) / 3);
+  // --- Tahap 3: RAC ---
+  var skorRAC = 0;
+  var logRAC = "-";
+  if (dataKandidat.skorRAC !== undefined && dataKandidat.skorRAC !== null) {
+    skorRAC = Number(dataKandidat.skorRAC) || 0;
+    logRAC = "Skor: " + skorRAC + "/40";
+  } else {
+    var resRAC = koreksiRAC(dataKandidat.rac);
+    skorRAC = resRAC.skor;
+    logRAC = resRAC.log;
+  }
 
-  var statusPelanggaran = (dataKandidat.pelanggaran >= 3)
+  // 3. Tentukan Interpretasi untuk Setiap Subtes
+  var interpAlpha = getInterpretasiAlpha(skorAlpha);
+  var interpMatDas = getInterpretasiMatDas(skorMatDas);
+  var interpRAC = getInterpretasiRAC(skorRAC);
+
+  // 4. Status Pelanggaran
+  var isDiskualifikasi = (dataKandidat.pelanggaran >= 3);
+  var statusPelanggaran = isDiskualifikasi
     ? "DISKUALIFIKASI (" + dataKandidat.pelanggaran + "x)"
     : (dataKandidat.pelanggaran || 0) + " Peringatan";
 
+  // 5. Penentuan HASIL AKHIR
+  var hasilAkhir = hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi);
+
+  // 6. Log Detail Gabungan
+  var logDetailJawaban = "[ALPHA] " + logAlpha + " | [MATDAS] " + logMatDas + " | [RAC] " + logRAC;
+
   var waktuSubmitDetail = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
 
+  // 7. Simpan Baris Data Baru ke Spreadsheet
   sheetHasil.appendRow([
     waktuSubmitDetail,
     dataKandidat.nama,
     dataKandidat.email,
     dataKandidat.posisi,
-    totalSkor,
-    hasilAlpha.skor + "/12 (" + hasilAlpha.skorPersen + "%)",
-    hasilMatematika.skorPersen,
-    hasilRAC.skor + "/40 (" + hasilRAC.skorPersen + "%)",
-    hasilAlpha.log,
-    hasilMatematika.log,
-    hasilRAC.log,
-    statusPelanggaran
+    skorAlpha,
+    interpAlpha,
+    skorMatDas,
+    interpMatDas,
+    skorRAC,
+    interpRAC,
+    hasilAkhir,
+    statusPelanggaran,
+    logDetailJawaban
   ]);
 
-  // === UPDATE STATUS TOKEN → SELESAI ===
+  // 8. Update Status Token -> SELESAI
   var sheetToken = ss.getSheetByName("DATA_TOKEN");
   if (sheetToken) {
     var dataToken = sheetToken.getDataRange().getValues();
