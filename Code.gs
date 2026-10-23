@@ -578,6 +578,12 @@ function hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi
 // =====================================================================
 var FOLDER_DRIVE_PROCTORING_ID = "1CrGGP8ZEk8J37bYaEbRmlViUb5n_ryW7";
 
+// JALANKAN FUNGSI INI 1 KALI DARI EDITOR APPS SCRIPT UNTUK MEMBERIKAN IZIN GOOGLE DRIVE
+function testIzinDrive() {
+  var folder = DriveApp.getFolderById(FOLDER_DRIVE_PROCTORING_ID);
+  Logger.log("✅ KONEKSI DRIVE BERHASIL! Nama Folder: " + folder.getName());
+}
+
 function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoProctoring) {
   try {
     if (!folderIndukId) return "-";
