@@ -109,62 +109,58 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
     return letters[index] || `${index + 1}`;
   };
 
+  const [showGridDrawer, setShowGridDrawer] = useState<boolean>(false);
+
   // -------------------------------------------------------------
   // SKELETON LOADING STATE
   // -------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="max-w-[820px] mx-auto py-5 px-3 sm:px-4 animate-fade-in space-y-4">
+      <div className="max-w-[820px] mx-auto py-3 sm:py-5 px-3 sm:px-4 animate-fade-in space-y-3 sm:space-y-4 safe-bottom-area">
         {/* Skeleton Title Header */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-100 animate-pulse" />
+        <div className="bg-white rounded-xl p-3 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-100 animate-pulse" />
             <div className="space-y-1.5">
-              <div className="h-5 w-24 bg-slate-200 rounded animate-pulse" />
-              <div className="h-3 w-40 bg-slate-100 rounded animate-pulse" />
+              <div className="h-4 sm:h-5 w-24 bg-slate-200 rounded animate-pulse" />
+              <div className="h-3 w-36 bg-slate-100 rounded animate-pulse" />
             </div>
           </div>
-          <div className="h-6 w-20 bg-blue-100 rounded-full animate-pulse" />
+          <div className="h-5 sm:h-6 w-16 sm:w-20 bg-blue-100 rounded-full animate-pulse" />
         </div>
 
         {/* Skeleton Progress Bar */}
-        <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 space-y-3">
+        <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-2.5">
           <div className="flex justify-between items-center">
-            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
-            <div className="h-4 w-20 bg-slate-200 rounded animate-pulse" />
+            <div className="h-3.5 w-28 bg-slate-200 rounded animate-pulse" />
+            <div className="h-3.5 w-16 bg-slate-200 rounded animate-pulse" />
           </div>
-          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div className="h-full bg-blue-200 w-1/3 animate-pulse rounded-full" />
-          </div>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {Array.from({ length: 18 }).map((_, i) => (
-              <div key={i} className="w-8 h-8 rounded-lg bg-slate-100 animate-pulse" />
-            ))}
           </div>
         </div>
 
-        {/* Skeleton Questions Cards (Render 3 placeholder cards) */}
-        <div className="space-y-4 pt-1">
-          {[1, 2, 3].map((cardIdx) => (
+        {/* Skeleton Questions Cards */}
+        <div className="space-y-3 pt-1">
+          {[1, 2].map((cardIdx) => (
             <div
               key={cardIdx}
-              className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 space-y-4 animate-pulse"
+              className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-slate-200 space-y-3 animate-pulse"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-16 bg-blue-100 rounded-full" />
+              <div className="flex items-center gap-2.5">
+                <div className="h-5 w-14 bg-blue-100 rounded-full" />
                 <div className="h-4 w-3/4 bg-slate-200 rounded" />
               </div>
-              <div className="h-3.5 w-1/2 bg-slate-100 rounded ml-1" />
+              <div className="h-3 w-1/2 bg-slate-100 rounded ml-1" />
 
-              {/* 5 Radio button skeletons */}
-              <div className="space-y-2.5 pt-2">
+              <div className="space-y-2 pt-1">
                 {[0, 1, 2, 3, 4].map((optIdx) => (
                   <div
                     key={optIdx}
-                    className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 bg-slate-50/50"
+                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50"
                   >
-                    <div className="w-5 h-5 rounded-full bg-slate-200 shrink-0" />
-                    <div className="h-4 w-2/5 bg-slate-200 rounded" />
+                    <div className="w-4 h-4 rounded-full bg-slate-200 shrink-0" />
+                    <div className="h-3.5 w-2/5 bg-slate-200 rounded" />
                   </div>
                 ))}
               </div>
@@ -172,11 +168,10 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
           ))}
         </div>
 
-        {/* Loading status indicator text */}
-        <div className="text-center py-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold border border-blue-100">
-            <RefreshCw className="w-4 h-4 animate-spin text-[#0056b3]" />
-            <span>Menarik soal dinamis dari server backend...</span>
+        <div className="text-center py-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-[#0056b3] text-xs font-bold border border-blue-100">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0056b3]" />
+            <span>Memuat soal dari server...</span>
           </div>
         </div>
       </div>
@@ -187,92 +182,126 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
   // MAIN LOADED CONTENT
   // -------------------------------------------------------------
   return (
-    <div className="max-w-[820px] mx-auto py-5 px-3 sm:px-4 animate-fade-in space-y-4">
+    <div className="max-w-[820px] mx-auto py-3 sm:py-5 px-3 sm:px-4 animate-fade-in space-y-3 sm:space-y-4 safe-bottom-area">
       {/* Title Card with Package Badge & Selector Filter */}
-      <div className="bg-[#e8f0fb] rounded-xl p-4 border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-[#0056b3] text-white flex items-center justify-center shadow-sm">
-            <Calculator className="w-5 h-5" />
+      <div className="bg-[#e8f0fb] rounded-xl p-3 sm:p-4 border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#0056b3] text-white flex items-center justify-center shadow-sm shrink-0">
+              <Calculator className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div className="text-left">
+              <h2 className="text-[#0056b3] font-black text-sm sm:text-lg tracking-tight">
+                Tahap 2
+              </h2>
+              <p className="text-[11px] sm:text-xs text-slate-500">
+                {displayQuestions.length} Soal • Batas 25 Menit
+              </p>
+            </div>
           </div>
-          <div className="text-left">
-            <h2 className="text-[#0056b3] font-black text-base sm:text-lg tracking-tight">
-              Tahap 2
-            </h2>
-            <p className="text-xs text-slate-500">
-              {displayQuestions.length} Butir Soal • Batas Waktu 25 Menit
-            </p>
-          </div>
-        </div>
 
-        {/* State Filter: Active Package Pill / Selection */}
-        <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-blue-200 shadow-sm">
-          <Layers className="w-4 h-4 text-[#0056b3]" />
-          <span className="text-xs font-bold text-slate-700 mr-1">Versi:</span>
-          {availablePacks.map((packName) => {
-            const isSelected = selectedPaket === packName;
-            return (
-              <button
-                key={packName}
-                type="button"
-                onClick={() => handleSwitchPaket(packName)}
-                disabled={isFetchingPaket}
-                className={`text-xs px-2.5 py-1 rounded-full font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#0056b3] text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {packName}
-              </button>
-            );
-          })}
+          {/* Package Selector Pill for Mobile / Desktop */}
+          <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-full border border-blue-200 shadow-sm shrink-0">
+            <Layers className="w-3.5 h-3.5 text-[#0056b3]" />
+            <span className="text-[11px] font-bold text-slate-700 hidden sm:inline">Versi:</span>
+            {availablePacks.map((packName) => {
+              const isSelected = selectedPaket === packName;
+              return (
+                <button
+                  key={packName}
+                  type="button"
+                  onClick={() => handleSwitchPaket(packName)}
+                  disabled={isFetchingPaket}
+                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0056b3] text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {packName}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Progress & Navigator Sticky Bar */}
-      <div className="bg-white rounded-xl p-4 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.07)] border border-slate-200 sticky top-[68px] z-20">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-xs sm:text-sm font-bold text-slate-600">
-            Progres Jawaban:
-          </span>
-          <span className="text-xs sm:text-sm font-extrabold text-[#0056b3]">
-            {answeredCount} / {displayQuestions.length} terjawab ({progressPercent}%)
+      {/* Progress & Navigator Sticky Bar (Ultra-Compact on Mobile) */}
+      <div className="bg-white rounded-xl p-3 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-200 sticky top-[50px] sm:top-[66px] z-20">
+        <div className="flex justify-between items-center mb-1.5">
+          <button
+            type="button"
+            onClick={() => setShowGridDrawer(!showGridDrawer)}
+            className="text-xs font-bold text-[#0056b3] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showGridDrawer ? '▲ Tutup Daftar Soal' : '▼ Lompat ke Nomor Soal'}</span>
+          </button>
+          <span className="text-xs font-extrabold text-[#0056b3]">
+            {answeredCount} / {displayQuestions.length} ({progressPercent}%)
           </span>
         </div>
 
         {/* Progress Track */}
-        <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden mb-3">
+        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-1.5">
           <div
             className="h-full bg-gradient-to-r from-[#0056b3] to-blue-500 rounded-full transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        {/* Navigator Grid */}
-        <div className="flex flex-wrap gap-1.5 sm:gap-2 max-h-24 overflow-y-auto pr-1">
-          {displayQuestions.map((q, idx) => {
-            const isAnswered = answers[q.id] && answers[q.id] !== '-';
-            const isFlagged = unansweredList.includes(idx + 1);
+        {/* Navigator Grid (Collapsible on Mobile to maximize reading space) */}
+        {showGridDrawer ? (
+          <div className="pt-2 border-t border-slate-100 animate-fade-in">
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+              {displayQuestions.map((q, idx) => {
+                const isAnswered = answers[q.id] && answers[q.id] !== '-';
+                const isFlagged = unansweredList.includes(idx + 1);
 
-            let btnClasses = 'border-slate-300 bg-white text-slate-600 hover:border-[#0056b3]';
-            if (isAnswered) {
-              btnClasses = 'bg-[#16a34a] border-[#16a34a] text-white shadow-sm';
-            } else if (isFlagged) {
-              btnClasses = 'bg-[#fee2e2] border-[#dc3545] text-[#dc3545] font-black animate-pulse';
-            }
+                let btnClasses = 'border-slate-300 bg-white text-slate-600 hover:border-[#0056b3]';
+                if (isAnswered) {
+                  btnClasses = 'bg-[#16a34a] border-[#16a34a] text-white shadow-sm';
+                } else if (isFlagged) {
+                  btnClasses = 'bg-[#fee2e2] border-[#dc3545] text-[#dc3545] font-black animate-pulse';
+                }
 
-            return (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => scrollToQuestion(q.id)}
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg text-xs font-bold border flex items-center justify-center transition-all ${btnClasses}`}
-              >
-                {idx + 1}
-              </button>
-            );
-          })}
-        </div>
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      scrollToQuestion(q.id);
+                      setShowGridDrawer(false);
+                    }}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold border flex items-center justify-center transition-all ${btnClasses}`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Mobile horizontal quick dots */
+          <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none sm:hidden">
+            {displayQuestions.map((q, idx) => {
+              const isAnswered = answers[q.id] && answers[q.id] !== '-';
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => scrollToQuestion(q.id)}
+                  className={`w-6 h-6 shrink-0 rounded text-[10px] font-bold border flex items-center justify-center ${
+                    isAnswered
+                      ? 'bg-[#16a34a] border-[#16a34a] text-white'
+                      : 'bg-white border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Unanswered questions alert */}
@@ -307,7 +336,7 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
               </div>
 
               {/* 5 Radio Button Options (A, B, C, D, E) */}
-              <div className="space-y-2.5">
+              <div className="space-y-2 sm:space-y-2.5">
                 {q.opsi.map((opt, optIdx) => {
                   const letterLabel = getOptionLetter(optIdx);
                   const isSelected = selectedAnswer === opt;
@@ -315,7 +344,7 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
                   return (
                     <label
                       key={optIdx}
-                      className={`flex items-center gap-3.5 p-3.5 sm:p-4 rounded-xl border-[1.5px] cursor-pointer transition-all select-none ${
+                      className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-[1.5px] cursor-pointer transition-all select-none min-h-[50px] sm:min-h-[54px] touch-manipulation active:scale-[0.99] ${
                         isSelected
                           ? 'bg-[#e8f0fb] border-[#0056b3] shadow-sm ring-1 ring-[#0056b3]'
                           : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
@@ -329,11 +358,11 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
                         onChange={() => onSelectAnswer(q.id, opt)}
                         className="w-4 h-4 sm:w-5 sm:h-5 text-[#0056b3] focus:ring-[#0056b3] accent-[#0056b3] cursor-pointer shrink-0"
                       />
-                      <div className="flex items-center gap-2 text-sm sm:text-base text-slate-700 leading-normal">
-                        <span className="font-extrabold text-[#0056b3] w-5 shrink-0">
+                      <div className="flex items-center gap-2 text-xs sm:text-base text-slate-700 leading-normal">
+                        <span className="font-extrabold text-[#0056b3] w-5 shrink-0 text-sm sm:text-base">
                           {letterLabel}.
                         </span>
-                        <span>{opt.replace(/^[A-E]\.\s*/, '')}</span>
+                        <span className="font-medium">{opt.replace(/^[A-E]\.\s*/, '')}</span>
                       </div>
                     </label>
                   );

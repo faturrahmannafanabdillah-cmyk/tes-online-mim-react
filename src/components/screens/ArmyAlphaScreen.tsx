@@ -343,16 +343,21 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
         >
           {/* NOMOR 1: 5 LINGKARAN */}
           {currentQuestion.tipe === 'SOAL_1_LINGKARAN' && (
-            <div className="flex justify-center items-center gap-3 sm:gap-4 flex-wrap">
+            <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap">
               {[0, 1, 2, 3, 4].map((i) => (
                 <input
                   key={i}
                   type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="characters"
+                  spellCheck="false"
                   maxLength={1}
                   disabled={!boardActive}
                   value={inputs[i] || ''}
                   onChange={(e) => handleInputArray(i, e.target.value, 1)}
-                  className="alpha-input shape-circle text-center font-bold text-2xl shadow-sm focus:border-[#0056b3]"
+                  className="alpha-input shape-circle text-center font-bold text-xl sm:text-2xl shadow-sm focus:border-[#0056b3]"
                 />
               ))}
             </div>
@@ -463,22 +468,27 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
           {/* NOMOR 3: 3 LINGKARAN POLOS + YA & TIDAK */}
           {currentQuestion.tipe === 'SOAL_3_KOMA_CORET' && (
-            <div className="flex justify-center items-center gap-6 sm:gap-8 flex-wrap">
-              <div className="flex gap-3">
+            <div className="flex justify-center items-center gap-4 sm:gap-8 flex-wrap">
+              <div className="flex gap-2 sm:gap-3">
                 {[0, 1, 2].map((i) => (
                   <input
                     key={i}
                     type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                    spellCheck="false"
                     maxLength={1}
                     disabled={!boardActive}
                     value={inputs[i] || ''}
                     onChange={(e) => handleInputArray(i, e.target.value, 1)}
-                    className="alpha-input shape-circle text-center font-bold text-2xl"
+                    className="alpha-input shape-circle text-center font-bold text-xl sm:text-2xl"
                   />
                 ))}
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 {['Ya', 'Tidak'].map((kata) => {
                   const isCoret = strikethroughList.includes(kata);
                   return (
@@ -487,7 +497,7 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
                       type="button"
                       onClick={() => toggleStrike(kata)}
                       disabled={!boardActive}
-                      className={`text-xl font-bold px-4 py-2 rounded-lg border-2 transition-all ${
+                      className={`text-lg sm:text-xl font-bold px-3.5 sm:px-4 py-2 rounded-lg border-2 transition-all min-h-[44px] ${
                         isCoret
                           ? 'border-red-500 bg-red-50 text-red-600 line-through'
                           : 'border-slate-300 bg-white text-slate-800'
@@ -503,16 +513,21 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
           {/* NOMOR 4: 5 LINGKARAN POLOS (PERBAIKAN SEJAJAR TANPA TITIK PERUSAK ALIGNMENT) */}
           {currentQuestion.tipe === 'SOAL_4_HARI_MINGGU' && (
-            <div className="flex justify-center items-center gap-3 sm:gap-4 flex-wrap">
+            <div className="flex justify-center items-center gap-2 sm:gap-4 flex-wrap">
               {[0, 1, 2, 3, 4].map((i) => (
                 <input
                   key={i}
                   type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="characters"
+                  spellCheck="false"
                   maxLength={1}
                   disabled={!boardActive}
                   value={inputs[i] || ''}
                   onChange={(e) => handleInputArray(i, e.target.value, 1)}
-                  className="alpha-input shape-circle text-center font-bold text-2xl shadow-sm"
+                  className="alpha-input shape-circle text-center font-bold text-xl sm:text-2xl shadow-sm"
                 />
               ))}
             </div>
@@ -607,11 +622,16 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
               {/* Floating Input Box muncul saat area diklik */}
               {activeSvgArea && (
-                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20">
-                  <div className="bg-white p-3.5 rounded-xl shadow-lg border border-slate-300 flex items-center gap-2">
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20">
+                  <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-lg border border-slate-300 flex items-center gap-2">
                     <input
                       ref={svgInputRef}
                       type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="characters"
+                      spellCheck="false"
                       maxLength={1}
                       value={svgInputValue}
                       onChange={(e) => setSvgInputValue(e.target.value.toUpperCase())}
@@ -624,14 +644,14 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSaveSvgInput(svgInputValue)}
-                      className="px-3 py-2.5 bg-[#0056b3] text-white rounded-lg text-xs font-bold"
+                      className="px-3.5 py-3 bg-[#0056b3] text-white rounded-lg text-xs font-bold min-h-[44px]"
                     >
                       OK
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveSvgArea(null)}
-                      className="px-2 py-2.5 text-slate-500 text-xs font-bold hover:text-slate-800"
+                      className="px-2.5 py-3 text-slate-500 text-xs font-bold hover:text-slate-800 min-h-[44px]"
                     >
                       Batal
                     </button>
@@ -720,11 +740,16 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
               {/* Floating Input Box muncul saat area diklik */}
               {activeSvgArea && (
-                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20">
-                  <div className="bg-white p-3.5 rounded-xl shadow-lg border border-slate-300 flex items-center gap-2">
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-20">
+                  <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-lg border border-slate-300 flex items-center gap-2">
                     <input
                       ref={svgInputRef}
                       type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="characters"
+                      spellCheck="false"
                       maxLength={1}
                       value={svgInputValue}
                       onChange={(e) => setSvgInputValue(e.target.value.toUpperCase())}
@@ -737,14 +762,14 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSaveSvgInput(svgInputValue)}
-                      className="px-3 py-2.5 bg-[#0056b3] text-white rounded-lg text-xs font-bold"
+                      className="px-3.5 py-3 bg-[#0056b3] text-white rounded-lg text-xs font-bold min-h-[44px]"
                     >
                       OK
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveSvgArea(null)}
-                      className="px-2 py-2.5 text-slate-500 text-xs font-bold hover:text-slate-800"
+                      className="px-2.5 py-3 text-slate-500 text-xs font-bold hover:text-slate-800 min-h-[44px]"
                     >
                       Batal
                     </button>
@@ -815,16 +840,21 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
                 <span>GUDANG</span>
               </div>
 
-              <div className="flex justify-center items-center gap-6">
+              <div className="flex justify-center items-center gap-4 sm:gap-6">
                 {[0, 1, 2].map((i) => (
                   <input
                     key={i}
                     type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                    spellCheck="false"
                     maxLength={1}
                     disabled={!boardActive}
                     value={inputs[i] || ''}
                     onChange={(e) => handleInputArray(i, e.target.value, 1)}
-                    className="alpha-input shape-circle text-center font-bold text-2xl shadow-sm"
+                    className="alpha-input shape-circle text-center font-bold text-xl sm:text-2xl shadow-sm"
                   />
                 ))}
               </div>
@@ -845,7 +875,7 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
                     type="button"
                     onClick={() => toggleStrike(angka)}
                     disabled={!boardActive}
-                    className={`alpha-click border border-slate-300 font-mono text-lg sm:text-xl font-bold py-2 px-3 rounded-lg transition ${
+                    className={`alpha-click border border-slate-300 font-mono text-lg sm:text-xl font-bold py-2 px-3 rounded-lg transition min-h-[44px] ${
                       isCoret ? 'dicoret' : 'bg-white hover:bg-slate-50'
                     }`}
                   >
@@ -858,24 +888,29 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
           {/* NOMOR 10: 5 PETAK (HAPUS BATASAN MAXLENGTH={1} AGAR BISA KETIK >1 ANGKA) */}
           {currentQuestion.tipe === 'SOAL_10_KOTAK_5_BAGIAN' && (
-            <div className="flex justify-center border-2 border-slate-900 rounded-lg overflow-x-auto p-1 bg-white max-w-xl mx-auto">
+            <div className="flex justify-center border-2 border-slate-900 rounded-lg overflow-x-auto p-1 bg-white max-w-xl mx-auto scrollbar-none">
               {[
                 { id: 0, width: 'w-14 sm:w-16' },
-                { id: 1, width: 'w-20 sm:w-28' },
-                { id: 2, width: 'w-32 sm:w-44' },
+                { id: 1, width: 'w-16 sm:w-28' },
+                { id: 2, width: 'w-24 sm:w-44' },
                 { id: 3, width: 'w-14 sm:w-16' },
-                { id: 4, width: 'w-36 sm:w-48' },
+                { id: 4, width: 'w-28 sm:w-48' },
               ].map((part) => (
                 <div
                   key={part.id}
-                  className={`border-r last:border-r-0 border-slate-900 p-2 flex items-center justify-center ${part.width}`}
+                  className={`border-r last:border-r-0 border-slate-900 p-1 sm:p-2 flex items-center justify-center shrink-0 ${part.width}`}
                 >
                   <input
                     type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                    spellCheck="false"
                     disabled={!boardActive}
                     value={inputs[part.id] || ''}
                     onChange={(e) => handleInputArray(part.id, e.target.value)}
-                    className="w-12 h-10 border-2 border-slate-800 text-center font-bold text-lg rounded bg-white shadow-sm"
+                    className="w-10 sm:w-12 h-10 border-2 border-slate-800 text-center font-bold text-base sm:text-lg rounded bg-white shadow-sm"
                   />
                 </div>
               ))}

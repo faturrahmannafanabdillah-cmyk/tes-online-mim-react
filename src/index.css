@@ -16,10 +16,17 @@
   --border: #e2e8f0;
   --radius: 12px;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -29,6 +36,11 @@ body {
   overflow-x: hidden;
   -webkit-user-select: none;
   user-select: none;
+  touch-action: manipulation;
+}
+
+button, a, input, select, label {
+  touch-action: manipulation;
 }
 
 @keyframes timerShake {
@@ -135,11 +147,17 @@ body {
 
 @media (max-width: 600px) {
   .alpha-input {
-    width: 42px;
-    height: 42px;
-    font-size: 18px;
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
   }
   .shape-board {
     gap: 6px;
+    padding: 12px 6px;
   }
+}
+
+/* Mobile safe area utility */
+.safe-bottom-area {
+  padding-bottom: calc(var(--safe-bottom) + 8px);
 }

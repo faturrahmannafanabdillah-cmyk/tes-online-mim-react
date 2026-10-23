@@ -217,8 +217,13 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
               value={token}
               onChange={handleTokenChange}
               disabled={!agreed}
+              inputMode="text"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck="false"
               placeholder="Contoh: MIM-XXXX-XXXX"
-              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base font-mono font-bold tracking-wider uppercase focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 disabled:text-slate-400 transition"
+              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base font-mono font-bold tracking-wider uppercase focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 disabled:text-slate-400 transition min-h-[46px]"
               required
             />
             <p className="text-[11px] text-slate-400 mt-1">
@@ -235,8 +240,12 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
               value={nama}
               onChange={(e) => setNama(e.target.value)}
               disabled={!agreed}
+              inputMode="text"
+              autoCapitalize="words"
+              autoCorrect="off"
+              spellCheck="false"
               placeholder="Masukkan nama lengkap Anda"
-              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 transition"
+              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 transition min-h-[46px]"
               required
             />
           </div>
@@ -250,8 +259,12 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={!agreed}
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
               placeholder="contoh: nama.kandidat@gmail.com"
-              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 transition"
+              className="w-full px-3.5 py-2.5 sm:py-3 border-[1.5px] border-slate-300 rounded-lg text-sm sm:text-base focus:outline-none focus:border-[#0056b3] focus:ring-2 focus:ring-[#0056b3]/20 disabled:bg-slate-100 transition min-h-[46px]"
               required
             />
           </div>

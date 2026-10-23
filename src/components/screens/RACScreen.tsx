@@ -77,89 +77,128 @@ export const RACScreen: React.FC<RACScreenProps> = ({
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   const isUrgent = timeLeft <= 30;
 
+  const [showGridModal, setShowGridModal] = useState(false);
+
   return (
-    <div className="max-w-[760px] mx-auto py-5 px-3 sm:px-4 animate-fade-in space-y-4">
+    <div className="max-w-[760px] mx-auto py-3 sm:py-5 px-3 sm:px-4 animate-fade-in space-y-3 sm:space-y-4 safe-bottom-area">
       {/* Title & Speed Warning */}
-      <div className="bg-[#e8f0fb] rounded-xl p-4 text-center border border-blue-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-          <div className="text-left">
-            <h2 className="text-[#0056b3] font-extrabold text-base sm:text-lg tracking-tight">
+      <div className="bg-[#e8f0fb] rounded-xl p-3 sm:p-4 text-center border border-blue-100 shadow-sm flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Zap className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
+          <div className="text-left min-w-0">
+            <h2 className="text-[#0056b3] font-extrabold text-sm sm:text-lg tracking-tight truncate">
               Tahap 3
             </h2>
-            <p className="text-xs text-slate-500">
-              40 Soal • Alokasi Waktu: 2 Menit (120 Detik)
+            <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+              40 Soal • Batas Waktu 2 Menit (120 Detik)
             </p>
           </div>
         </div>
 
         {/* 2-Minute Countdown Display */}
         <div
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-base text-white shadow-md transition-colors ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-base text-white shadow-sm shrink-0 transition-colors ${
             isUrgent ? 'bg-[#dc3545] animate-timer-shake' : 'bg-[#0056b3]'
           }`}
         >
-          <Clock className="w-5 h-5 animate-pulse" />
-          <span className="font-mono text-xl">{formattedTime}</span>
+          <Clock className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+          <span className="font-mono text-base sm:text-xl font-black">{formattedTime}</span>
         </div>
       </div>
 
-      {/* Progress Counter & Question Navigator Grid */}
-      <div className="bg-white rounded-xl p-4 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.07)] border border-slate-200">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-xs font-bold text-slate-600">
-            Progres Jawaban:
-          </span>
+      {/* Progress Counter & Compact Mobile Navigator */}
+      <div className="bg-white rounded-xl p-3 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-200">
+        <div className="flex justify-between items-center mb-1.5">
+          <button
+            type="button"
+            onClick={() => setShowGridModal(!showGridModal)}
+            className="text-xs font-bold text-[#0056b3] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showGridModal ? '▲ Sembunyikan Grid' : '▼ Daftar 40 Soal'}</span>
+          </button>
           <span className="text-xs font-extrabold text-[#0056b3]">
-            {answeredCount} / {questions.length} Terjawab ({Math.round((answeredCount / questions.length) * 100)}%)
+            {answeredCount} / {questions.length} ({Math.round((answeredCount / questions.length) * 100)}%)
           </span>
         </div>
 
-        <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-3">
+        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2">
           <div
             className="h-full bg-gradient-to-r from-amber-500 to-[#16a34a] rounded-full transition-all duration-200"
             style={{ width: `${(answeredCount / questions.length) * 100}%` }}
           />
         </div>
 
-        {/* Quick Grid Navigator (40 mini buttons) */}
-        <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
-          {questions.map((q, idx) => {
-            const hasAnswer = !!answers[q.id];
-            const isCurrent = idx === activeIdx;
+        {/* Collapsible Grid on mobile / Visible when opened */}
+        {showGridModal ? (
+          <div className="pt-2 border-t border-slate-100 animate-fade-in">
+            <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5 max-h-48 overflow-y-auto p-1">
+              {questions.map((q, idx) => {
+                const hasAnswer = !!answers[q.id];
+                const isCurrent = idx === activeIdx;
 
-            return (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => setActiveIdx(idx)}
-                className={`w-7 h-7 rounded text-[11px] font-bold border transition ${
-                  isCurrent
-                    ? 'ring-2 ring-[#0056b3] border-[#0056b3] bg-blue-50 text-[#0056b3]'
-                    : hasAnswer
-                    ? 'bg-[#16a34a] border-[#16a34a] text-white'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
-                }`}
-              >
-                {idx + 1}
-              </button>
-            );
-          })}
-        </div>
+                return (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveIdx(idx);
+                      setShowGridModal(false);
+                    }}
+                    className={`h-8 rounded-lg text-xs font-bold border transition ${
+                      isCurrent
+                        ? 'ring-2 ring-[#0056b3] border-[#0056b3] bg-blue-50 text-[#0056b3]'
+                        : hasAnswer
+                        ? 'bg-[#16a34a] border-[#16a34a] text-white'
+                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Mobile horizontal mini scroll preview */
+          <div className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
+            {questions.map((q, idx) => {
+              const hasAnswer = !!answers[q.id];
+              const isCurrent = idx === activeIdx;
+
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => setActiveIdx(idx)}
+                  className={`w-7 h-7 shrink-0 rounded text-[11px] font-bold border transition ${
+                    isCurrent
+                      ? 'ring-2 ring-[#0056b3] border-[#0056b3] bg-blue-50 text-[#0056b3]'
+                      : hasAnswer
+                      ? 'bg-[#16a34a] border-[#16a34a] text-white'
+                      : 'bg-white border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Question Card (Focus view) */}
-      <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_4px_25px_rgba(0,0,0,0.08)] border border-slate-200 text-center">
-        <div className="flex justify-between items-center mb-6">
-          <span className="bg-[#e8f0fb] text-[#0056b3] font-black text-sm px-4 py-1.5 rounded-full">
+      {/* Question Card (Focus view optimized for mobile thumb ergonomics) */}
+      <div className="bg-white rounded-2xl p-4 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.07)] border border-slate-200 text-center">
+        <div className="flex justify-between items-center mb-3 sm:mb-5">
+          <span className="bg-[#e8f0fb] text-[#0056b3] font-black text-xs sm:text-sm px-3 sm:px-4 py-1 sm:py-1.5 rounded-full">
             Soal {currentQ.nomor} dari 40
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 sm:gap-2">
             <button
               type="button"
               disabled={activeIdx === 0}
               onClick={() => setActiveIdx((prev) => Math.max(0, prev - 1))}
-              className="p-1.5 rounded-lg border border-slate-300 disabled:opacity-30 hover:bg-slate-50"
+              className="p-1.5 sm:p-2 rounded-lg border border-slate-300 disabled:opacity-30 hover:bg-slate-50"
+              title="Soal Sebelumnya"
             >
               <ArrowLeft className="w-4 h-4 text-slate-600" />
             </button>
@@ -167,7 +206,8 @@ export const RACScreen: React.FC<RACScreenProps> = ({
               type="button"
               disabled={activeIdx === questions.length - 1}
               onClick={() => setActiveIdx((prev) => Math.min(questions.length - 1, prev + 1))}
-              className="p-1.5 rounded-lg border border-slate-300 disabled:opacity-30 hover:bg-slate-50"
+              className="p-1.5 sm:p-2 rounded-lg border border-slate-300 disabled:opacity-30 hover:bg-slate-50"
+              title="Soal Selanjutnya"
             >
               <ArrowRight className="w-4 h-4 text-slate-600" />
             </button>
@@ -175,12 +215,12 @@ export const RACScreen: React.FC<RACScreenProps> = ({
         </div>
 
         {/* Comparison Columns (Kolom A vs Kolom B) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner flex flex-col justify-center min-h-[110px]">
-            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-slate-50 border-2 border-slate-300 rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-inner flex flex-col justify-center min-h-[85px] sm:min-h-[110px]">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-1 text-center">
               Kolom A
             </span>
-            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
+            <div className="text-lg sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
               {currentQ.tipeVisual === 'simbol' && currentQ.simbolAId ? (
                 <RACSymbolRenderer simbolId={currentQ.simbolAId} />
               ) : (
@@ -189,11 +229,11 @@ export const RACScreen: React.FC<RACScreenProps> = ({
             </div>
           </div>
 
-          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner flex flex-col justify-center min-h-[110px]">
-            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2 text-center">
+          <div className="bg-slate-50 border-2 border-slate-300 rounded-xl sm:rounded-2xl p-3 sm:p-5 shadow-inner flex flex-col justify-center min-h-[85px] sm:min-h-[110px]">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-1 text-center">
               Kolom B
             </span>
-            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
+            <div className="text-lg sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
               {currentQ.tipeVisual === 'simbol' && currentQ.simbolBId ? (
                 <RACSymbolRenderer simbolId={currentQ.simbolBId} />
               ) : (
@@ -203,49 +243,49 @@ export const RACScreen: React.FC<RACScreenProps> = ({
           </div>
         </div>
 
-        {/* Large Ergonomic Action Buttons */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 max-w-lg mx-auto">
+        {/* Large Ergonomic Thumb Action Buttons */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 max-w-lg mx-auto">
           <button
             type="button"
             onClick={() => handleAnswer('SAMA')}
-            className={`py-5 sm:py-6 px-4 rounded-2xl font-black text-lg sm:text-xl flex flex-col items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer ${
+            className={`py-4 sm:py-6 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-base sm:text-xl flex flex-col items-center justify-center gap-1 transition-all shadow-md active:scale-95 cursor-pointer touch-manipulation min-h-[58px] sm:min-h-[72px] ${
               answers[currentQ.id] === 'SAMA'
                 ? 'bg-[#16a34a] text-white ring-4 ring-emerald-300 shadow-emerald-700/30'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-6 h-6" />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>SAMA (V)</span>
             </div>
-            <span className="text-[11px] font-normal opacity-80">(Tekan S atau ←)</span>
+            <span className="text-[10px] sm:text-[11px] font-normal opacity-85 hidden sm:inline">(Tekan S atau ←)</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleAnswer('TIDAK SAMA')}
-            className={`py-5 sm:py-6 px-4 rounded-2xl font-black text-lg sm:text-xl flex flex-col items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer ${
+            className={`py-4 sm:py-6 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-base sm:text-xl flex flex-col items-center justify-center gap-1 transition-all shadow-md active:scale-95 cursor-pointer touch-manipulation min-h-[58px] sm:min-h-[72px] ${
               answers[currentQ.id] === 'TIDAK SAMA'
                 ? 'bg-[#dc3545] text-white ring-4 ring-red-300 shadow-red-700/30'
                 : 'bg-[#dc3545] hover:bg-red-700 text-white shadow-red-600/20'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <XCircle className="w-6 h-6" />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>BERBEDA (X)</span>
             </div>
-            <span className="text-[11px] font-normal opacity-80">(Tekan T atau →)</span>
+            <span className="text-[10px] sm:text-[11px] font-normal opacity-85 hidden sm:inline">(Tekan T atau →)</span>
           </button>
         </div>
       </div>
 
       {/* Final Submit Button */}
-      <div className="pt-2 pb-10">
+      <div className="pt-2 pb-6 sm:pb-10">
         <button
           type="button"
           onClick={onFinishRAC}
           disabled={isSubmitting}
-          className="w-full py-4 px-6 bg-[#0056b3] hover:bg-[#003d80] text-white rounded-xl font-bold text-base sm:text-lg transition shadow-lg shadow-[#0056b3]/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:bg-slate-300"
+          className="w-full py-3.5 sm:py-4 px-6 bg-[#0056b3] hover:bg-[#003d80] text-white rounded-xl font-bold text-sm sm:text-lg transition shadow-lg shadow-[#0056b3]/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:bg-slate-300 min-h-[48px]"
         >
           {isSubmitting ? (
             'Mengirimkan Seluruh Hasil Ujian...'

@@ -102,30 +102,30 @@ export const LatihanRACScreen: React.FC<LatihanRACScreenProps> = ({ onFinishLati
         </div>
 
         {/* Action Choice Buttons */}
-        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => handleAnswer('SAMA')}
-            className={`py-4 px-4 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer ${
+            className={`py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer touch-manipulation min-h-[54px] ${
               userAnswers[currentItem.id] === 'SAMA'
                 ? 'bg-[#16a34a] text-white ring-4 ring-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'
             }`}
           >
-            <CheckCircle2 className="w-5 h-5" />
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
             <span>SAMA (V)</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleAnswer('BERBEDA')}
-            className={`py-4 px-4 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer ${
+            className={`py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer touch-manipulation min-h-[54px] ${
               userAnswers[currentItem.id] === 'BERBEDA'
                 ? 'bg-[#dc3545] text-white ring-4 ring-red-300'
                 : 'bg-[#dc3545] hover:bg-red-700 text-white'
             }`}
           >
-            <XCircle className="w-5 h-5" />
+            <XCircle className="w-5 h-5 shrink-0" />
             <span>BERBEDA (X)</span>
           </button>
         </div>
