@@ -334,18 +334,19 @@ function koreksiRAC(jawabanRAC) {
     return { skor: 0, skorPersen: 0, log: "Tidak Dikerjakan" };
   }
 
-  // Kunci Resmi 40 Soal RAC
+  // Kunci Resmi 40 Soal RAC (Berdasarkan Lembar Tes LFPSP UI & Kunci Resmi)
+  // V = SAMA, X = TIDAK SAMA
   var kunciRAC = {
-    "RAC_01": "SAMA",       "RAC_02": "TIDAK SAMA", "RAC_03": "SAMA",       "RAC_04": "TIDAK SAMA",
-    "RAC_05": "SAMA",       "RAC_06": "SAMA",       "RAC_07": "TIDAK SAMA", "RAC_08": "SAMA",
-    "RAC_09": "TIDAK SAMA", "RAC_10": "SAMA",       "RAC_11": "TIDAK SAMA", "RAC_12": "SAMA",
-    "RAC_13": "SAMA",       "RAC_14": "TIDAK SAMA", "RAC_15": "SAMA",       "RAC_16": "TIDAK SAMA",
-    "RAC_17": "SAMA",       "RAC_18": "SAMA",       "RAC_19": "SAMA",       "RAC_20": "TIDAK SAMA",
-    "RAC_21": "SAMA",       "RAC_22": "TIDAK SAMA", "RAC_23": "SAMA",       "RAC_24": "SAMA",
-    "RAC_25": "TIDAK SAMA", "RAC_26": "SAMA",       "RAC_27": "TIDAK SAMA", "RAC_28": "SAMA",
-    "RAC_29": "SAMA",       "RAC_30": "SAMA",       "RAC_31": "SAMA",       "RAC_32": "TIDAK SAMA",
-    "RAC_33": "SAMA",       "RAC_34": "SAMA",       "RAC_35": "TIDAK SAMA", "RAC_36": "SAMA",
-    "RAC_37": "SAMA",       "RAC_38": "TIDAK SAMA", "RAC_39": "SAMA",       "RAC_40": "SAMA"
+    "RAC_01": "SAMA",       "RAC_02": "SAMA",       "RAC_03": "TIDAK SAMA", "RAC_04": "SAMA",
+    "RAC_05": "TIDAK SAMA", "RAC_06": "SAMA",       "RAC_07": "TIDAK SAMA", "RAC_08": "SAMA",
+    "RAC_09": "TIDAK SAMA", "RAC_10": "SAMA",       "RAC_11": "TIDAK SAMA", "RAC_12": "TIDAK SAMA",
+    "RAC_13": "TIDAK SAMA", "RAC_14": "SAMA",       "RAC_15": "SAMA",       "RAC_16": "TIDAK SAMA",
+    "RAC_17": "TIDAK SAMA", "RAC_18": "SAMA",       "RAC_19": "TIDAK SAMA", "RAC_20": "TIDAK SAMA",
+    "RAC_21": "TIDAK SAMA", "RAC_22": "SAMA",       "RAC_23": "TIDAK SAMA", "RAC_24": "SAMA",
+    "RAC_25": "SAMA",       "RAC_26": "SAMA",       "RAC_27": "TIDAK SAMA", "RAC_28": "TIDAK SAMA",
+    "RAC_29": "TIDAK SAMA", "RAC_30": "TIDAK SAMA", "RAC_31": "TIDAK SAMA", "RAC_32": "SAMA",
+    "RAC_33": "TIDAK SAMA", "RAC_34": "SAMA",       "RAC_35": "TIDAK SAMA", "RAC_36": "TIDAK SAMA",
+    "RAC_37": "SAMA",       "RAC_38": "TIDAK SAMA", "RAC_39": "TIDAK SAMA", "RAC_40": "TIDAK SAMA"
   };
 
   var benar = 0;

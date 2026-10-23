@@ -38,6 +38,9 @@ export interface RACQuestionItem {
   kolomA: string;
   kolomB: string;
   kunci: 'SAMA' | 'TIDAK SAMA';
+  tipeVisual?: 'teks' | 'simbol';
+  simbolAId?: string;
+  simbolBId?: string;
 }
 
 export interface CandidateInfo {

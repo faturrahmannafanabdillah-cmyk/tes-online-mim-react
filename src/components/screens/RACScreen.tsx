@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, XCircle, Clock, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
 import { RACQuestionItem } from '../../types';
 import { DEFAULT_RAC_QUESTIONS } from '../../data/mockData';
+import { RACSymbolRenderer } from './RACSymbolRenderer';
 
 interface RACScreenProps {
   questions?: RACQuestionItem[];
@@ -175,21 +176,29 @@ export const RACScreen: React.FC<RACScreenProps> = ({
 
         {/* Comparison Columns (Kolom A vs Kolom B) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner">
-            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2">
+          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner flex flex-col justify-center min-h-[110px]">
+            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2 text-center">
               Kolom A
             </span>
-            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none">
-              {currentQ.kolomA}
+            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
+              {currentQ.tipeVisual === 'simbol' && currentQ.simbolAId ? (
+                <RACSymbolRenderer simbolId={currentQ.simbolAId} />
+              ) : (
+                currentQ.kolomA
+              )}
             </div>
           </div>
 
-          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner">
-            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2">
+          <div className="bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 sm:p-6 shadow-inner flex flex-col justify-center min-h-[110px]">
+            <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-wider block mb-2 text-center">
               Kolom B
             </span>
-            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none">
-              {currentQ.kolomB}
+            <div className="text-xl sm:text-2xl font-black font-mono text-slate-800 break-all select-none flex items-center justify-center">
+              {currentQ.tipeVisual === 'simbol' && currentQ.simbolBId ? (
+                <RACSymbolRenderer simbolId={currentQ.simbolBId} />
+              ) : (
+                currentQ.kolomB
+              )}
             </div>
           </div>
         </div>
