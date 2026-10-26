@@ -580,32 +580,27 @@ function hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi
 }
 
 // =====================================================================
-// GOOGLE DRIVE PROCTORING STORAGE
+// GOOGLE DRIVE PROCTORING STORAGE (100% OTOMATIS & ANTI-RESTRIKSI)
 // =====================================================================
-var FOLDER_DRIVE_PROCTORING_ID = "1CrGGP8ZEk8J37bYaEbRmlViUb5n_ryW7";
 
-// Fungsi cerdas: Mencari folder berdasarkan ID, jika tidak ketemu/beda akun,
-// otomatis mencari/membuat folder "ARSIP_PROCTORING_MIM" di Google Drive akun yang aktif.
+// Mencari atau membuat folder "ARSIP_PROCTORING_MIM" di Google Drive akun yang aktif.
+// Otomatis mengaktifkan link sharing agar dapat dibuka langsung oleh tim HRD (@pt-mim-id.com).
 function getOrCreateProctoringFolder() {
-  // 1. Coba ambil dari Folder ID yang ditentukan
-  if (FOLDER_DRIVE_PROCTORING_ID && FOLDER_DRIVE_PROCTORING_ID.trim() !== "") {
-    try {
-      var folderById = DriveApp.getFolderById(FOLDER_DRIVE_PROCTORING_ID.trim());
-      if (folderById) return folderById;
-    } catch (e) {
-      Logger.log("Folder ID tidak dapat diakses langsung oleh akun ini, beralih ke pencarian nama folder...");
-    }
-  }
-
-  // 2. Coba cari folder dengan nama "ARSIP_PROCTORING_MIM" di Drive akun aktif
   var folderName = "ARSIP_PROCTORING_MIM";
   var folders = DriveApp.getFoldersByName(folderName);
+  var folder;
+
   if (folders.hasNext()) {
-    return folders.next();
+    folder = folders.next();
+  } else {
+    folder = DriveApp.createFolder(folderName);
   }
 
-  // 3. Jika belum ada sama sekali, buatkan folder baru otomatis di My Drive
-  return DriveApp.createFolder(folderName);
+  try {
+    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {}
+
+  return folder;
 }
 
 // JALANKAN FUNGSI INI 1 KALI DARI EDITOR APPS SCRIPT UNTUK MEMBERIKAN IZIN GOOGLE DRIVE
@@ -616,21 +611,27 @@ function testIzinDrive() {
   Logger.log("🔗 URL Folder: " + folder.getUrl());
 }
 
-// Cerdas: Dapatkan atau buat subfolder unik per-kandidat: [Nama] ([Token])
+// Cerdas & Anti-Gagal: Dapatkan atau buat subfolder unik per-kandidat: [Nama] ([Token])
 function getOrCreateCandidateFolder(namaKandidat, token) {
-  var folderInduk = getOrCreateProctoringFolder();
-  if (!folderInduk) return null;
-
   var namaClean = (namaKandidat || "Kandidat").replace(/[^a-zA-Z0-9 _-]/g, "").trim();
   var tokenClean = (token || "NO_TOKEN").replace(/[^a-zA-Z0-9_-]/g, "").trim();
   var namaFolder = namaClean + " (" + tokenClean + ")";
 
+  var folderInduk = getOrCreateProctoringFolder();
   var existing = folderInduk.getFoldersByName(namaFolder);
+  var subFolder;
+
   if (existing.hasNext()) {
-    return existing.next();
+    subFolder = existing.next();
+  } else {
+    subFolder = folderInduk.createFolder(namaFolder);
   }
 
-  return folderInduk.createFolder(namaFolder);
+  try {
+    subFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {}
+
+  return subFolder;
 }
 
 // 1. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):

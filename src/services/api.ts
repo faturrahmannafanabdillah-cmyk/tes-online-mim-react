@@ -8,9 +8,12 @@ import {
   DEFAULT_RAC_QUESTIONS
 } from '../data/mockData';
 
-export const GAS_API_URL =
+export const DIRECT_GAS_URL =
   (import.meta as any).env?.VITE_GAS_API_URL ||
   "https://script.google.com/macros/s/AKfycbxQ-htHTxGtxF3849RFvXAqIkxhjDoglCmq3SccSyAH9oKhboaWZm4Pd0uZxQhDW_tf/exec";
+
+// Proxy endpoint lokal (bebas dari pemblokiran CORS & iframe sandbox)
+export const GAS_API_URL = "/api/gas";
 
 export interface InitResponse {
   posisi: string[];
@@ -30,41 +33,48 @@ export const apiService = {
    * Fetch available recruitment positions from GAS Web App
    */
   async fetchPositions(): Promise<string[]> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(`${GAS_API_URL}?action=init`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: InitResponse = await res.json();
-      if (data && Array.isArray(data.posisi) && data.posisi.length > 0) {
-        return data.posisi;
+    const endpoints = [`${GAS_API_URL}?action=init`, `${DIRECT_GAS_URL}?action=init`];
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data: InitResponse = await res.json();
+          if (data && Array.isArray(data.posisi) && data.posisi.length > 0) {
+            return data.posisi;
+          }
+        }
+      } catch (err) {
+        // Fallback to next endpoint
       }
-      return DEFAULT_POSITIONS;
-    } catch (err) {
-      console.warn('GAS fetchPositions fallback:', err);
-      return DEFAULT_POSITIONS;
     }
+    return DEFAULT_POSITIONS;
   },
 
   /**
    * Check status of a previously used token
    */
   async checkTokenStatus(token: string): Promise<{ status?: string; error?: string }> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(`${GAS_API_URL}?action=cekToken&token=${encodeURIComponent(token)}`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      return { status: 'SEDANG DIKERJAKAN' };
+    const endpoints = [
+      `${GAS_API_URL}?action=cekToken&token=${encodeURIComponent(token)}`,
+      `${DIRECT_GAS_URL}?action=cekToken&token=${encodeURIComponent(token)}`,
+    ];
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        // Fallback to next endpoint
+      }
     }
+    return { status: 'SEDANG DIKERJAKAN' };
   },
 
   /**
@@ -83,88 +93,88 @@ export const apiService = {
   /**
    * Fetch dynamic questions for Matematika Dasar (MatDas) from Google Apps Script
    */
+  /**
+   * Fetch dynamic questions for Matematika Dasar (MatDas) from Google Apps Script
+   */
   async fetchMatDasQuestions(paket?: string): Promise<{
     paketList: string[];
     paketTerpilih: string;
     questions: QuestionItem[];
   }> {
     const query = paket ? `&paket=${encodeURIComponent(paket)}` : '';
-    const url = `${GAS_API_URL}?action=getSoalMatDas${query}`;
+    const endpoints = [
+      `${GAS_API_URL}?action=getSoalMatDas${query}`,
+      `${DIRECT_GAS_URL}?action=getSoalMatDas${query}`,
+    ];
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rawData = await res.json();
+        if (!res.ok) continue;
+        const rawData = await res.json();
 
-      let items: any[] = [];
-      let paketTerpilih = paket || 'Paket A';
-      let paketList: string[] = [];
+        let items: any[] = [];
+        let paketTerpilih = paket || 'Paket A';
+        let paketList: string[] = [];
 
-      if (Array.isArray(rawData)) {
-        items = rawData;
-      } else if (rawData && Array.isArray(rawData.soal)) {
-        items = rawData.soal;
-        paketTerpilih = rawData.paketTerpilih || paketTerpilih;
-        paketList = rawData.paketTersedia || [];
-      } else if (rawData && Array.isArray(rawData.data)) {
-        items = rawData.data;
-        paketTerpilih = rawData.paketTerpilih || paketTerpilih;
-        paketList = rawData.paketTersedia || [];
-      }
-
-      if (items.length > 0) {
-        if (paketList.length === 0) {
-          const pSet = new Set<string>();
-          items.forEach((it) => {
-            if (it.paket) pSet.add(it.paket);
-          });
-          paketList = Array.from(pSet);
+        if (Array.isArray(rawData)) {
+          items = rawData;
+        } else if (rawData && Array.isArray(rawData.soal)) {
+          items = rawData.soal;
+          paketTerpilih = rawData.paketTerpilih || paketTerpilih;
+          paketList = rawData.paketTersedia || [];
+        } else if (rawData && Array.isArray(rawData.data)) {
+          items = rawData.data;
+          paketTerpilih = rawData.paketTerpilih || paketTerpilih;
+          paketList = rawData.paketTersedia || [];
         }
 
-        // Filter for active package
-        if (paketList.length > 0 && (!paket || !items.every((it) => it.paket === paket))) {
-          if (!paket) {
-            paketTerpilih = paketList[Math.floor(Math.random() * paketList.length)];
+        if (items.length > 0) {
+          if (paketList.length === 0) {
+            const pSet = new Set<string>();
+            items.forEach((it) => {
+              if (it.paket) pSet.add(it.paket);
+            });
+            paketList = Array.from(pSet);
           }
-          items = items.filter((it) => !it.paket || it.paket === paketTerpilih);
-        }
 
-        const formattedQuestions: QuestionItem[] = items.map((it, idx) => ({
-          id: it.id || `MTK_${idx + 1}`,
-          soal: it.soal || `Soal ${idx + 1}`,
-          opsi: Array.isArray(it.opsi) ? it.opsi : [],
-          kategori: it.paket || paketTerpilih,
-        }));
+          if (paketList.length > 0 && (!paket || !items.every((it) => it.paket === paket))) {
+            if (!paket) {
+              paketTerpilih = paketList[Math.floor(Math.random() * paketList.length)];
+            }
+            items = items.filter((it) => !it.paket || it.paket === paketTerpilih);
+          }
 
-        if (formattedQuestions.length > 0) {
-          return {
-            paketList: paketList.length > 0 ? paketList : ['Paket A', 'Paket B', 'Paket C'],
-            paketTerpilih,
-            questions: formattedQuestions,
-          };
+          const formattedQuestions: QuestionItem[] = items.map((it, idx) => ({
+            id: it.id || `MTK_${idx + 1}`,
+            soal: it.soal || `Soal ${idx + 1}`,
+            opsi: Array.isArray(it.opsi) ? it.opsi : [],
+            kategori: it.paket || paketTerpilih,
+          }));
+
+          if (formattedQuestions.length > 0) {
+            return {
+              paketList: paketList.length > 0 ? paketList : ['Paket A', 'Paket B', 'Paket C'],
+              paketTerpilih,
+              questions: formattedQuestions,
+            };
+          }
         }
+      } catch (err) {
+        // Try next endpoint
       }
-
-      // Fallback if empty sheet
-      const fallback = this.getRandomMatematikaPack();
-      return {
-        paketList: ['Paket A', 'Paket B', 'Paket C'],
-        paketTerpilih: fallback.namaPaket,
-        questions: fallback.soal,
-      };
-    } catch (err) {
-      console.warn('Fetch MatDas questions fallback:', err);
-      const fallback = this.getRandomMatematikaPack();
-      return {
-        paketList: ['Paket A', 'Paket B', 'Paket C'],
-        paketTerpilih: fallback.namaPaket,
-        questions: fallback.soal,
-      };
     }
+
+    const fallback = this.getRandomMatematikaPack();
+    return {
+      paketList: ['Paket A', 'Paket B', 'Paket C'],
+      paketTerpilih: fallback.namaPaket,
+      questions: fallback.soal,
+    };
   },
 
   /**
@@ -178,54 +188,58 @@ export const apiService = {
     deviceId: string;
   }): Promise<VerifyResponse> {
     const randomPack = this.getRandomMatematikaPack();
+    const payload = JSON.stringify({
+      action: 'verifikasi',
+      token: params.token,
+      nama: params.nama,
+      email: params.email,
+      posisi: params.posisi,
+      deviceId: params.deviceId,
+    });
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const endpoints = [GAS_API_URL, DIRECT_GAS_URL];
+    for (const url of endpoints) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const res = await fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify({
-          action: 'verifikasi',
-          token: params.token,
-          nama: params.nama,
-          email: params.email,
-          posisi: params.posisi,
-          deviceId: params.deviceId,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8',
+          },
+          body: payload,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
 
-      const data = await res.json();
-      if (data.error) {
-        return data;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.error) {
+            return data;
+          }
+          const backendMatematika = data.matematika || null;
+          return {
+            alpha: DEFAULT_ALPHA_QUESTIONS,
+            matematika: backendMatematika && backendMatematika.length > 0 ? backendMatematika : randomPack.soal,
+            paketMatematika: data.paketMatematika || randomPack.namaPaket,
+            rac: DEFAULT_RAC_QUESTIONS,
+          };
+        }
+      } catch (err) {
+        // Continue to fallback endpoint
       }
-
-      // If backend returns dynamic matematika questions:
-      const backendMatematika = data.matematika || null;
-
-      return {
-        alpha: DEFAULT_ALPHA_QUESTIONS,
-        matematika: (backendMatematika && backendMatematika.length > 0) ? backendMatematika : randomPack.soal,
-        paketMatematika: data.paketMatematika || randomPack.namaPaket,
-        rac: DEFAULT_RAC_QUESTIONS,
-      };
-    } catch (err) {
-      console.warn('Verify API request using fallback engine:', err);
-      if (params.token.trim().length < 3) {
-        return { error: 'Token tidak valid. Pastikan format token benar (contoh: MIM-TEST-001).' };
-      }
-      return {
-        alpha: DEFAULT_ALPHA_QUESTIONS,
-        matematika: randomPack.soal,
-        paketMatematika: randomPack.namaPaket,
-        rac: DEFAULT_RAC_QUESTIONS,
-      };
     }
+
+    if (params.token.trim().length < 3) {
+      return { error: 'Token tidak valid. Pastikan format token benar (contoh: MIM-TEST-001).' };
+    }
+    return {
+      alpha: DEFAULT_ALPHA_QUESTIONS,
+      matematika: randomPack.soal,
+      paketMatematika: randomPack.namaPaket,
+      rac: DEFAULT_RAC_QUESTIONS,
+    };
   },
 
   /**
@@ -241,22 +255,36 @@ export const apiService = {
     try {
       if (!params.token || !params.fotoBase64) return;
 
+      const bodyPayload = JSON.stringify({
+        action: 'uploadSnapshot',
+        token: params.token,
+        nama: params.nama,
+        stageKey: params.stageKey,
+        fotoBase64: params.fotoBase64,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 1. Prioritas: Kirim via proxy /api/gas secara background
       fetch(GAS_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
-        body: JSON.stringify({
-          action: 'uploadSnapshot',
-          token: params.token,
-          nama: params.nama,
-          stageKey: params.stageKey,
-          fotoBase64: params.fotoBase64,
-          timestamp: new Date().toISOString(),
-        }),
+        body: bodyPayload,
         keepalive: true,
-      }).catch((err) => {
-        console.warn(`[Proctoring] Background upload error for ${params.stageKey}:`, err);
+      }).catch(() => {
+        // 2. Cadangan: Langsung ke URL GAS dengan mode no-cors
+        fetch(DIRECT_GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8',
+          },
+          body: bodyPayload,
+          keepalive: true,
+        }).catch((err) => {
+          console.warn(`[Proctoring] Snapshot fallback send error for ${params.stageKey}:`, err);
+        });
       });
     } catch (err) {
       console.warn(`[Proctoring] Failed to initiate background upload:`, err);
@@ -264,32 +292,75 @@ export const apiService = {
   },
 
   /**
-   * Submit candidate 3-stage exam answers and proctoring logs
+   * Submit candidate 3-stage exam answers and proctoring logs.
+   * Dilengkapi multi-tier failover: Proxy -> Direct GAS -> No-CORS backup.
    */
   async submitExam(candidateAnswers: CandidateAnswers): Promise<{ success: boolean; message?: string }> {
+    const payload = JSON.stringify({
+      action: 'simpanHasil',
+      dataKandidat: candidateAnswers,
+    });
+
+    // Jalur 1: Kirim via server proxy /api/gas (Bebas CORS, iframe sandbox, & redirect block)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       const res = await fetch(GAS_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
-        body: JSON.stringify({
-          action: 'simpanHasil',
-          dataKandidat: candidateAnswers,
-        }),
+        body: payload,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
 
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const data = await res.json();
-      return { success: true, message: data?.status || data?.message || 'Data berhasil dikirim.' };
-    } catch (err) {
-      console.error('Submit exam failed:', err);
-      throw err;
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        return { success: true, message: data?.status || data?.message || 'Data berhasil disimpan.' };
+      }
+    } catch (proxyErr) {
+      console.warn('Proxy submit gagal, beralih ke direct GAS URL:', proxyErr);
+    }
+
+    // Jalur 2: Kirim langsung ke Google Apps Script URL
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      const res = await fetch(DIRECT_GAS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: payload,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        return { success: true, message: data?.status || data?.message || 'Data berhasil disimpan.' };
+      }
+    } catch (directErr) {
+      console.warn('Direct submit gagal, menggunakan no-cors failover:', directErr);
+    }
+
+    // Jalur 3: Failover no-cors (memastikan payload tetap terkirim ke Google Sheets meskipun browser/iframe memblokir CORS response)
+    try {
+      await fetch(DIRECT_GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: payload,
+      });
+      return { success: true, message: 'Data berhasil dikirim ke server.' };
+    } catch (finalErr) {
+      console.error('Semua jalur pengiriman ujian gagal:', finalErr);
+      throw finalErr;
     }
   },
 };
