@@ -645,16 +645,24 @@ function uploadSnapshotBackground(token, nama, stageKey, fotoBase64) {
 
     var cleanStage = (stageKey || "snapshot").replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    // 2. GRACEFUL FALLBACK UNTUK KAMERA MATI (KHUSUS IOS/SAFARI):
-    // Jika kamera diputus/dimatikan oleh OS Safari, buat file catatan peringatan HRD
-    if (!fotoBase64 || fotoBase64 === "CAMERA_BLOCKED_OR_ERROR" || typeof fotoBase64 !== "string") {
+    // 2. GRACEFUL FALLBACK UNTUK KAMERA MATI (KHUSUS IOS/SAFARI) ATAU KAMERA DITOLAK:
+    // Jika kamera diputus/dimatikan oleh OS Safari atau izin ditolak, buat file catatan peringatan HRD
+    var isErrorString = typeof fotoBase64 === "string" && (
+      fotoBase64.indexOf("CAMERA_") !== -1 ||
+      fotoBase64 === "CAMERA_BLOCKED_OR_ERROR" ||
+      fotoBase64 === "CAMERA_MISSING_OR_DENIED" ||
+      fotoBase64 === "CAMERA_PERMISSION_DENIED"
+    );
+
+    if (!fotoBase64 || isErrorString || typeof fotoBase64 !== "string") {
+      var errLabel = (typeof fotoBase64 === "string" && fotoBase64.indexOf("CAMERA_") !== -1) ? fotoBase64 : "CAMERA_BLOCKED_OR_ERROR";
       var timeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
       var logMsg = "WAKTU: " + timeStr + "\n" +
                    "TAHAP: " + cleanStage + "\n" +
-                   "STATUS: CAMERA_BLOCKED_OR_ERROR\n" +
-                   "CATATAN: Stream kamera mati, stream terputus, atau izin dimatikan oleh sistem operasi perangkat (iOS/Safari) saat transisi ujian.";
+                   "STATUS: " + errLabel + "\n" +
+                   "CATATAN: Akses kamera ditolak, tidak ada hardware kamera, stream terputus, atau izin dimatikan oleh sistem operasi perangkat (iOS/Safari) saat transisi ujian.";
       subFolder.createFile("LOG_WARNING_" + cleanStage + ".txt", logMsg, "text/plain");
-      return { success: true, status: "logged_camera_error", folderUrl: subFolder.getUrl() };
+      return { success: true, status: "logged_camera_error", errorType: errLabel, folderUrl: subFolder.getUrl() };
     }
 
     // Jika foto valid berformat Base64

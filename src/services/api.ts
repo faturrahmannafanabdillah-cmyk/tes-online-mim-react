@@ -243,8 +243,66 @@ export const apiService = {
   },
 
   /**
+   * Mengirim sinyal error kamera ("CAMERA_MISSING_OR_DENIED") ke backend secara tak-terblokir.
+   * Menggunakan navigator.sendBeacon agar kebal dari pemblokiran navigasi pindah layar atau unmount.
+   */
+  sendCameraErrorBeacon(params: {
+    token: string;
+    nama: string;
+    errorType?: string;
+    stageKey?: string;
+  }): void {
+    const errorString = params.errorType || 'CAMERA_MISSING_OR_DENIED';
+    const stage = params.stageKey || '01_Init_Camera';
+    console.log('[PROCTORING-BEACON] Mengirim laporan error kamera ke backend:', {
+      token: params.token,
+      nama: params.nama,
+      stageKey: stage,
+      errorType: errorString,
+    });
+
+    try {
+      const payloadStr = JSON.stringify({
+        action: 'uploadSnapshot',
+        token: params.token || 'NO_TOKEN',
+        nama: params.nama || 'Kandidat',
+        stageKey: stage,
+        fotoBase64: errorString,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 1. Prioritaskan navigator.sendBeacon (kebal dari unmount & freeze)
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
+        const beaconSent = navigator.sendBeacon(DIRECT_GAS_URL, blob);
+        console.log(`[PROCTORING-BEACON] Pengiriman ${stage} via navigator.sendBeacon sukses:`, beaconSent);
+        if (beaconSent) return;
+      }
+
+      // 2. Cadangan: fetch dengan keepalive: true
+      fetch(DIRECT_GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: payloadStr,
+        keepalive: true,
+      })
+        .then(() => {
+          console.log(`[PROCTORING-BEACON] Selesai dikirim via fetch keepalive untuk ${stage}`);
+        })
+        .catch((err) => {
+          console.warn(`[PROCTORING-BEACON] Gagal kirim beacon error untuk ${stage}:`, err);
+        });
+    } catch (err) {
+      console.warn(`[PROCTORING-BEACON] Exception saat inisiasi beacon error untuk ${stage}:`, err);
+    }
+  },
+
+  /**
    * Fire-and-forget asynchronous background upload for proctoring snapshot.
-   * Completely non-blocking: does not throw, does not hold up UI transitions.
+   * Dilengkapi navigator.sendBeacon dan fetch keepalive, kebal dari pemblokiran transisi/unmount.
    */
   uploadSnapshotAsync(params: {
     token: string;
@@ -252,42 +310,82 @@ export const apiService = {
     stageKey: string;
     fotoBase64: string;
   }): void {
-    try {
-      if (!params.token || !params.fotoBase64) return;
+    const isErrorPayload = !params.fotoBase64 || !params.fotoBase64.startsWith('data:');
+    console.log('[PROCTORING-UPLOAD] Memulai pengiriman proctoring snapshot:', {
+      stageKey: params.stageKey,
+      token: params.token,
+      nama: params.nama,
+      isErrorPayload,
+      dataLength: params.fotoBase64 ? params.fotoBase64.length : 0,
+    });
 
-      const bodyPayload = JSON.stringify({
+    try {
+      const token = params.token || localStorage.getItem('mim_saved_token') || 'NO_TOKEN';
+      const nama = params.nama || localStorage.getItem('mim_saved_nama') || 'Kandidat';
+      const payloadStr = JSON.stringify({
         action: 'uploadSnapshot',
-        token: params.token,
-        nama: params.nama,
+        token,
+        nama,
         stageKey: params.stageKey,
-        fotoBase64: params.fotoBase64,
+        fotoBase64: params.fotoBase64 || 'CAMERA_BLOCKED_OR_ERROR',
         timestamp: new Date().toISOString(),
       });
 
-      // 1. Prioritas: Kirim via proxy /api/gas secara background
+      // JIKA payload adalah string error ("CAMERA_BLOCKED_OR_ERROR") ATAU browser mendukung sendBeacon untuk ukuran hemat
+      if (isErrorPayload && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
+        const beaconSuccess = navigator.sendBeacon(DIRECT_GAS_URL, blob);
+        console.log(`[PROCTORING-UPLOAD] Error payload ${params.stageKey} berhasil dikirim via navigator.sendBeacon:`, beaconSuccess);
+        if (beaconSuccess) return;
+      }
+
+      // 1. Prioritas Utama: Kirim via proxy /api/gas secara background
       fetch(GAS_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
-        body: bodyPayload,
+        body: payloadStr,
         keepalive: true,
-      }).catch(() => {
-        // 2. Cadangan: Langsung ke URL GAS dengan mode no-cors
-        fetch(DIRECT_GAS_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8',
-          },
-          body: bodyPayload,
-          keepalive: true,
-        }).catch((err) => {
-          console.warn(`[Proctoring] Snapshot fallback send error for ${params.stageKey}:`, err);
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json().catch(() => null);
+            console.log(`[PROCTORING-UPLOAD-RES] Respons backend ${params.stageKey} (via Proxy):`, data);
+          } else {
+            console.warn(`[PROCTORING-UPLOAD-RES] Proxy HTTP status ${res.status} untuk ${params.stageKey}`);
+          }
+        })
+        .catch((proxyErr) => {
+          console.warn(`[PROCTORING-UPLOAD] Proxy gagal untuk ${params.stageKey}, mengalihkan ke jalur Direct:`, proxyErr);
+
+          // 2. Cadangan: Coba navigator.sendBeacon jika ukuran < 64KB
+          if (typeof navigator !== 'undefined' && navigator.sendBeacon && params.fotoBase64 && params.fotoBase64.length < 60000) {
+            const blob = new Blob([payloadStr], { type: 'text/plain;charset=utf-8' });
+            const directBeaconOk = navigator.sendBeacon(DIRECT_GAS_URL, blob);
+            console.log(`[PROCTORING-UPLOAD] Fallback sendBeacon untuk ${params.stageKey}:`, directBeaconOk);
+            if (directBeaconOk) return;
+          }
+
+          // 3. Cadangan Terakhir: Direct GAS URL dengan mode no-cors
+          fetch(DIRECT_GAS_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: payloadStr,
+            keepalive: true,
+          })
+            .then(() => {
+              console.log(`[PROCTORING-UPLOAD] Selesai dikirim via direct GAS no-cors untuk ${params.stageKey}`);
+            })
+            .catch((directErr) => {
+              console.error(`[PROCTORING-UPLOAD] Semua jalur upload gagal untuk ${params.stageKey}:`, directErr);
+            });
         });
-      });
     } catch (err) {
-      console.warn(`[Proctoring] Failed to initiate background upload:`, err);
+      console.error(`[PROCTORING-UPLOAD] Exception saat inisiasi upload untuk ${params.stageKey}:`, err);
     }
   },
 

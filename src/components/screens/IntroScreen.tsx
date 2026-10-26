@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, CheckCircle2, AlertCircle, FileCheck, ShieldAlert, Smartphone, Video, Lock, RotateCcw, X } from 'lucide-react';
 import { CandidateInfo } from '../../types';
 import { cameraProctoringService } from '../../services/cameraProctoring';
+import { apiService } from '../../services/api';
 
 interface IntroScreenProps {
   positions: string[];
@@ -112,6 +113,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
 
   const handleRequestCameraPermission = async () => {
     setIsStartingCamera(true);
+    console.log('[IntroScreen] Meminta akses kamera...');
     const res = await cameraProctoringService.requestCamera();
     setIsStartingCamera(false);
 
@@ -119,11 +121,26 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
       setCameraStep('streaming');
       setTimeout(() => {
         if (liveVideoRef.current && res.stream) {
+          liveVideoRef.current.setAttribute('playsinline', 'true');
+          liveVideoRef.current.setAttribute('webkit-playsinline', 'true');
+          liveVideoRef.current.muted = true;
+          liveVideoRef.current.autoplay = true;
           liveVideoRef.current.srcObject = res.stream;
-          liveVideoRef.current.play().catch(() => {});
+          liveVideoRef.current.play().catch((playErr) => {
+            console.warn('[IntroScreen] liveVideoRef.play() warning:', playErr);
+          });
         }
       }, 100);
     } else {
+      console.warn('[IntroScreen] Gagal membuka kamera:', res);
+      // Kirim beacon error ke backend HRD agar tercatat
+      apiService.sendCameraErrorBeacon({
+        token: token.trim(),
+        nama: nama.trim(),
+        stageKey: '01_Init_Camera',
+        errorType: res.errorType === 'PERMISSION_DENIED' ? 'CAMERA_MISSING_OR_DENIED' : 'CAMERA_BLOCKED_OR_ERROR',
+      });
+
       if (res.errorType === 'PERMISSION_DENIED') {
         setCameraStep('blocked');
       } else {
@@ -517,6 +534,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
                     autoPlay
                     playsInline
                     muted
+                    {...({ 'webkit-playsinline': 'true' } as any)}
                     className="w-full h-full object-cover -scale-x-100"
                   />
                   {/* Oval Face Guide Overlay */}

@@ -422,10 +422,16 @@ export const App: React.FC = () => {
       setCandidateAnswers(updatedCandidateAnswers);
       candidateAnswersRef.current = updatedCandidateAnswers;
 
+      try {
+        localStorage.setItem('mim_saved_token', candidateData.token);
+        localStorage.setItem('mim_saved_nama', candidateData.nama);
+      } catch (e) {}
+
       // 1. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
       // Kirim foto selfie awal secara non-blocking di latar belakang
       const initialSelfie = candidateData.fotoSelfie || candidateData.fotoBase64;
       if (initialSelfie) {
+        console.log('[PROCTORING] Mengunggah foto selfie verifikasi awal secara background...');
         apiService.uploadSnapshotAsync({
           token: candidateData.token,
           nama: candidateData.nama,
@@ -460,6 +466,7 @@ export const App: React.FC = () => {
   // Finish Tahap 1 -> Transition to Tahap 2 Instruction (Jepret foto proctoring Tahap 1)
   const handleFinishAlpha = (alphaAnswers: Record<string, AlphaAnswerItem>) => {
     // 1. Ambil silent snapshot dengan graceful fallback (iOS/Safari-safe, tanpa throw/alert)
+    console.log('[PROCTORING] Mengambil silent snapshot Selesai Tahap 1 (Army Alpha)...');
     const snapAlpha = cameraProctoringService.captureSnapshot(0.5);
 
     // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
@@ -479,7 +486,7 @@ export const App: React.FC = () => {
     setCandidateAnswers(updated);
     candidateAnswersRef.current = updated;
 
-    alert('✅ Tahap 1 Selesai!\nSilakan lanjutkan ke petunjuk pelaksanaan Tahap 2.');
+    // Transisi mulus tanpa window.alert pemblokir thread
     transitionToStage2Instruction();
   };
 
@@ -550,6 +557,7 @@ export const App: React.FC = () => {
     }
 
     // 1. Ambil silent snapshot dengan graceful fallback (iOS/Safari-safe, tanpa throw/alert)
+    console.log('[PROCTORING] Mengambil silent snapshot Selesai Tahap 2 (MatDas)...');
     const snapMatDas = cameraProctoringService.captureSnapshot(0.5);
 
     // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
@@ -569,7 +577,7 @@ export const App: React.FC = () => {
     candidateAnswersRef.current = updated;
 
     setUnansweredList([]);
-    alert('✅ Tahap 2 Selesai!\nSilakan lanjutkan ke petunjuk pelaksanaan Tahap 3.');
+    // Transisi mulus tanpa window.alert pemblokir thread
     transitionToStage3Instruction();
   };
 
@@ -614,6 +622,7 @@ export const App: React.FC = () => {
   // Finish Tahap 3 -> Final Submission (Jepret foto proctoring Tahap 3)
   const handleFinishRAC = () => {
     // 1. Ambil silent snapshot dengan graceful fallback
+    console.log('[PROCTORING] Mengambil silent snapshot Selesai Tahap 3 (RAC)...');
     const snapRAC = cameraProctoringService.captureSnapshot(0.5);
 
     // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
@@ -759,7 +768,7 @@ export const App: React.FC = () => {
           <ArmyAlphaScreen
             questions={dbData.alpha}
             onFinishAlpha={handleFinishAlpha}
-            onSkipAlpha={transitionToStage2Instruction}
+            onSkipAlpha={() => handleFinishAlpha(candidateAnswersRef.current.alpha)}
           />
         )}
 

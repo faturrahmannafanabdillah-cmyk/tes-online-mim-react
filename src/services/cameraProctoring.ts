@@ -12,8 +12,10 @@ class CameraProctoringService {
    * Meminta izin dan mengaktifkan stream kamera depan dengan resolusi hemat memori.
    */
   async requestCamera(): Promise<{ success: boolean; stream?: MediaStream; errorType?: string; errorMessage?: string }> {
+    console.log('[PROCTORING-CAMERA] Meminta akses kamera depan (resolusi hemat mobile)...');
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('[PROCTORING-CAMERA] API getUserMedia tidak didukung pada browser ini.');
         return {
           success: false,
           errorType: 'UNSUPPORTED',
@@ -37,20 +39,48 @@ class CameraProctoringService {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.activeStream = stream;
+      const videoTracks = stream.getVideoTracks();
+      console.log('[PROCTORING-CAMERA] Stream kamera berhasil didapatkan:', {
+        id: stream.id,
+        tracksCount: videoTracks.length,
+        trackLabel: videoTracks[0]?.label,
+        trackSettings: videoTracks[0]?.getSettings(),
+      });
 
-      // Buat elemen video offscreen agar siap dijepret kapan saja
+      // 1. ELEMEN VIDEO EKSPLISIT: playsinline, autoplay, muted agar OS mobile tidak membekukannya
       if (!this.offscreenVideo) {
         this.offscreenVideo = document.createElement('video');
         this.offscreenVideo.setAttribute('playsinline', 'true');
+        this.offscreenVideo.setAttribute('webkit-playsinline', 'true');
+        this.offscreenVideo.setAttribute('autoplay', 'true');
         this.offscreenVideo.setAttribute('muted', 'true');
+        this.offscreenVideo.playsInline = true;
+        this.offscreenVideo.autoplay = true;
         this.offscreenVideo.muted = true;
+
+        // Lampirkan ke DOM (tersembunyi) agar decoder iOS/Android tidak menonaktifkan rendering pipeline
+        this.offscreenVideo.style.position = 'fixed';
+        this.offscreenVideo.style.width = '1px';
+        this.offscreenVideo.style.height = '1px';
+        this.offscreenVideo.style.opacity = '0.001';
+        this.offscreenVideo.style.pointerEvents = 'none';
+        this.offscreenVideo.style.zIndex = '-99999';
+        this.offscreenVideo.style.top = '0';
+        this.offscreenVideo.style.left = '0';
+        if (typeof document !== 'undefined' && document.body) {
+          document.body.appendChild(this.offscreenVideo);
+        }
       }
+
       this.offscreenVideo.srcObject = stream;
-      await this.offscreenVideo.play().catch(() => {});
+      await this.offscreenVideo.play().catch((playErr) => {
+        console.warn('[PROCTORING-CAMERA] Autoplay promise caught (akan diputar ulang saat capture):', playErr);
+      });
+      console.log('[PROCTORING-CAMERA] Elemen video siap, readyState:', this.offscreenVideo.readyState);
 
       return { success: true, stream };
     } catch (err: any) {
-      console.warn('Izin kamera gagal/ditolak:', err);
+      console.error('[PROCTORING-CAMERA] getUserMedia gagal atau ditolak:', err);
       let errorType = 'UNKNOWN';
       let errorMessage = 'Gagal mengakses kamera depan.';
 
@@ -76,15 +106,23 @@ class CameraProctoringService {
    * tangkap semua error tanpa alert atau crash, dan return "CAMERA_BLOCKED_OR_ERROR".
    */
   captureSnapshot(quality: number = 0.5): string {
+    console.log('[PROCTORING-SNAP] Memulai pengambilan snapshot proctoring...');
     try {
       if (!this.activeStream || !this.offscreenVideo) {
+        console.warn('[PROCTORING-SNAP] activeStream atau offscreenVideo null, fallback ke CAMERA_BLOCKED_OR_ERROR');
         return 'CAMERA_BLOCKED_OR_ERROR';
       }
 
       // Validasi liveness video tracks (mendeteksi jika iOS mematikan background track)
       const tracks = this.activeStream.getVideoTracks();
-      if (!tracks || tracks.length === 0 || tracks[0].readyState === 'ended') {
-        console.warn('Proctoring: Video track ended atau tidak ditemukan.');
+      if (!tracks || tracks.length === 0) {
+        console.warn('[PROCTORING-SNAP] Tidak ada video track ditemukan.');
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
+
+      const track = tracks[0];
+      if (track.readyState === 'ended') {
+        console.warn('[PROCTORING-SNAP] Track state sudah ENDED (kamera dimatikan oleh sistem operasi mobile).');
         return 'CAMERA_BLOCKED_OR_ERROR';
       }
 
@@ -92,12 +130,13 @@ class CameraProctoringService {
 
       // Pada iOS Safari, elemen video terkadang ter-pause saat app backgrounding
       if (video.paused) {
+        console.log('[PROCTORING-SNAP] Elemen video dalam kondisi paused, mencoba memutar ulang...');
         video.play().catch(() => {});
       }
 
       // Validasi readyState video (HAVE_CURRENT_DATA = 2)
       if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
-        console.warn('Proctoring: Video belum siap untuk capture, readyState:', video.readyState);
+        console.warn('[PROCTORING-SNAP] Video belum siap dirender (readyState:', video.readyState, ', dimensi:', video.videoWidth, 'x', video.videoHeight, ')');
         return 'CAMERA_BLOCKED_OR_ERROR';
       }
 
@@ -114,6 +153,7 @@ class CameraProctoringService {
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
+        console.warn('[PROCTORING-SNAP] Context 2D canvas tidak tersedia.');
         return 'CAMERA_BLOCKED_OR_ERROR';
       }
 
@@ -134,13 +174,14 @@ class CameraProctoringService {
 
       const dataUrl = canvas.toDataURL('image/jpeg', quality);
       if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+        console.warn('[PROCTORING-SNAP] toDataURL gagal menghasilkan Base64 JPEG valid.');
         return 'CAMERA_BLOCKED_OR_ERROR';
       }
 
+      console.log('[PROCTORING-SNAP] Foto proctoring berhasil diambil! Ukuran karakter Base64:', dataUrl.length);
       return dataUrl;
     } catch (e) {
-      // Tidak boleh memunculkan alert, return status error terproteksi
-      console.warn('Graceful fallback proctoring capture:', e);
+      console.error('[PROCTORING-SNAP] Exception saat pengambilan foto:', e);
       return 'CAMERA_BLOCKED_OR_ERROR';
     }
   }
@@ -149,6 +190,7 @@ class CameraProctoringService {
    * Mematikan kamera agar hemat baterai saat ujian berakhir.
    */
   stopCamera() {
+    console.log('[PROCTORING-CAMERA] Mematikan stream kamera proctoring.');
     if (this.activeStream) {
       this.activeStream.getTracks().forEach((track) => {
         try {
@@ -159,6 +201,10 @@ class CameraProctoringService {
     }
     if (this.offscreenVideo) {
       this.offscreenVideo.srcObject = null;
+      if (this.offscreenVideo.parentNode) {
+        this.offscreenVideo.parentNode.removeChild(this.offscreenVideo);
+      }
+      this.offscreenVideo = null;
     }
   }
 
