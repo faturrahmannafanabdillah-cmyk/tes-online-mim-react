@@ -318,10 +318,13 @@ export const apiService = {
 
       if (res.ok) {
         const data = await res.json().catch(() => null);
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
         return { success: true, message: data?.status || data?.message || 'Data berhasil disimpan.' };
       }
-    } catch (proxyErr) {
-      console.warn('Proxy submit gagal, beralih ke direct GAS URL:', proxyErr);
+    } catch (proxyErr: any) {
+      console.warn('Proxy submit gagal, beralih ke direct GAS URL:', proxyErr?.message || proxyErr);
     }
 
     // Jalur 2: Kirim langsung ke Google Apps Script URL
@@ -341,10 +344,13 @@ export const apiService = {
 
       if (res.ok) {
         const data = await res.json().catch(() => null);
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
         return { success: true, message: data?.status || data?.message || 'Data berhasil disimpan.' };
       }
-    } catch (directErr) {
-      console.warn('Direct submit gagal, menggunakan no-cors failover:', directErr);
+    } catch (directErr: any) {
+      console.warn('Direct submit gagal, menggunakan no-cors failover:', directErr?.message || directErr);
     }
 
     // Jalur 3: Failover no-cors (memastikan payload tetap terkirim ke Google Sheets meskipun browser/iframe memblokir CORS response)

@@ -674,7 +674,7 @@ function uploadSnapshotBackground(token, nama, stageKey, fotoBase64) {
   }
 }
 
-function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoProctoring) {
+function simpanFotoKeDrive(namaKandidat, token, fotoSelfie, fotoProctoring) {
   try {
     var subFolder = getOrCreateCandidateFolder(namaKandidat, token);
     if (!subFolder) return "-";
@@ -812,14 +812,18 @@ function simpanHasilUjian(dataKandidat) {
   // 5. Penentuan HASIL AKHIR
   var hasilAkhir = hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi);
 
-  // 6. Simpan Foto Proctoring ke Google Drive Folder
-  var linkFotoDrive = simpanFotoKeDrive(
-    FOLDER_DRIVE_PROCTORING_ID,
-    dataKandidat.nama,
-    dataKandidat.token,
-    dataKandidat.fotoSelfie,
-    dataKandidat.fotoProctoring
-  );
+  // 6. Simpan Foto Proctoring ke Google Drive Folder (Aman & Tidak Memblokir Spreadsheet)
+  var linkFotoDrive = "-";
+  try {
+    linkFotoDrive = simpanFotoKeDrive(
+      dataKandidat.nama,
+      dataKandidat.token,
+      dataKandidat.fotoSelfie,
+      dataKandidat.fotoProctoring
+    );
+  } catch (errDrive) {
+    linkFotoDrive = "Error Drive: " + errDrive.message;
+  }
 
   // 7. Log Detail Gabungan
   var logDetailJawaban = "[ALPHA] " + logAlpha + " | [MATDAS] " + logMatDas + " | [RAC] " + logRAC;
