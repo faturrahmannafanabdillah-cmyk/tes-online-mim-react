@@ -59,7 +59,7 @@ const TAHAP_3_EXAMPLES = [
   { soal: 'drab   |   drab', jawaban: 'SAMA (V)' },
   { soal: '9 5 4 3 7   |   9 4 5 3 7', jawaban: 'BERBEDA (X)' },
   { soal: '= + + = + =   |   = + = + =', jawaban: 'BERBEDA (X)' },
-  { soal: 'P.T.SCARR   |   P.T.SCAR', jawaban: 'BERBEDA (X)' },
+  { soal: 'PT. SCARR   |   P.T. SCAR', jawaban: 'BERBEDA (X)' },
 ];
 
 export const App: React.FC = () => {
@@ -239,10 +239,10 @@ export const App: React.FC = () => {
   };
 
   const restoreSavedSession = (saved: any) => {
-    setDbData(saved.dbData || {
+    setDbData({
       alpha: DEFAULT_ALPHA_QUESTIONS,
-      matematika: PAKET_MATEMATIKA_A,
-      rac: DEFAULT_RAC_QUESTIONS,
+      matematika: saved.dbData?.matematika || PAKET_MATEMATIKA_A,
+      rac: DEFAULT_RAC_QUESTIONS, // Selalu gunakan 40 soal RAC resmi terbaru dari PDF
     });
     setCandidateAnswers(saved.jawabanKandidat);
     setTahapSaatIni(saved.tahapSaatIni);

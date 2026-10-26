@@ -8,6 +8,7 @@ interface LatihanRACScreenProps {
 const LATIHAN_ITEMS = [
   {
     id: 1,
+    label: "Contoh a",
     kolomA: "drab",
     kolomB: "drab",
     kunci: "SAMA",
@@ -15,6 +16,7 @@ const LATIHAN_ITEMS = [
   },
   {
     id: 2,
+    label: "Contoh b",
     kolomA: "9 5 4 3 7",
     kolomB: "9 4 5 3 7",
     kunci: "BERBEDA",
@@ -22,10 +24,19 @@ const LATIHAN_ITEMS = [
   },
   {
     id: 3,
+    label: "Contoh c",
     kolomA: "= + + = + =",
     kolomB: "= + = + =",
     kunci: "BERBEDA",
     penjelasan: "Jumlah dan susunan tanda simbol pada kedua kolom berbeda.",
+  },
+  {
+    id: 4,
+    label: "Contoh d",
+    kolomA: "PT. SCARR",
+    kolomB: "P.T. SCAR",
+    kunci: "BERBEDA",
+    penjelasan: "Penulisan PT dan jumlah huruf R berbeda (PT. SCARR vs P.T. SCAR).",
   },
 ];
 
