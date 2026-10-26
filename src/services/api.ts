@@ -229,6 +229,41 @@ export const apiService = {
   },
 
   /**
+   * Fire-and-forget asynchronous background upload for proctoring snapshot.
+   * Completely non-blocking: does not throw, does not hold up UI transitions.
+   */
+  uploadSnapshotAsync(params: {
+    token: string;
+    nama: string;
+    stageKey: string;
+    fotoBase64: string;
+  }): void {
+    try {
+      if (!params.token || !params.fotoBase64) return;
+
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({
+          action: 'uploadSnapshot',
+          token: params.token,
+          nama: params.nama,
+          stageKey: params.stageKey,
+          fotoBase64: params.fotoBase64,
+          timestamp: new Date().toISOString(),
+        }),
+        keepalive: true,
+      }).catch((err) => {
+        console.warn(`[Proctoring] Background upload error for ${params.stageKey}:`, err);
+      });
+    } catch (err) {
+      console.warn(`[Proctoring] Failed to initiate background upload:`, err);
+    }
+  },
+
+  /**
    * Submit candidate 3-stage exam answers and proctoring logs
    */
   async submitExam(candidateAnswers: CandidateAnswers): Promise<{ success: boolean; message?: string }> {
@@ -258,3 +293,4 @@ export const apiService = {
     }
   },
 };
+

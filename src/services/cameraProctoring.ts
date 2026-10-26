@@ -71,13 +71,35 @@ class CameraProctoringService {
 
   /**
    * Mengambil satu foto snapshot (resolusi 320x240, JPEG kualitas hemat ~15-25 KB).
+   * GRACEFUL FALLBACK (KHUSUS IOS/SAFARI):
+   * Jika stream terputus, mati, atau permission dicabut oleh OS saat transisi,
+   * tangkap semua error tanpa alert atau crash, dan return "CAMERA_BLOCKED_OR_ERROR".
    */
-  captureSnapshot(quality: number = 0.5): string | null {
-    if (!this.activeStream && !this.offscreenVideo) return null;
-
+  captureSnapshot(quality: number = 0.5): string {
     try {
+      if (!this.activeStream || !this.offscreenVideo) {
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
+
+      // Validasi liveness video tracks (mendeteksi jika iOS mematikan background track)
+      const tracks = this.activeStream.getVideoTracks();
+      if (!tracks || tracks.length === 0 || tracks[0].readyState === 'ended') {
+        console.warn('Proctoring: Video track ended atau tidak ditemukan.');
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
+
       const video = this.offscreenVideo;
-      if (!video || video.readyState < 2) return null;
+
+      // Pada iOS Safari, elemen video terkadang ter-pause saat app backgrounding
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+
+      // Validasi readyState video (HAVE_CURRENT_DATA = 2)
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+        console.warn('Proctoring: Video belum siap untuk capture, readyState:', video.readyState);
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
 
       if (!this.offscreenCanvas) {
         this.offscreenCanvas = document.createElement('canvas');
@@ -91,7 +113,9 @@ class CameraProctoringService {
       canvas.height = targetHeight;
 
       const ctx = canvas.getContext('2d');
-      if (!ctx) return null;
+      if (!ctx) {
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
 
       // Balik horizontal (mirror) agar tampak alami seperti cermin kamera depan
       ctx.save();
@@ -108,10 +132,16 @@ class CameraProctoringService {
       const timeStr = new Date().toLocaleTimeString('id-ID');
       ctx.fillText(`PT MIM Proctoring • ${timeStr}`, 6, canvas.height - 5);
 
-      return canvas.toDataURL('image/jpeg', quality);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+        return 'CAMERA_BLOCKED_OR_ERROR';
+      }
+
+      return dataUrl;
     } catch (e) {
-      console.warn('Gagal capture snapshot proctoring:', e);
-      return null;
+      // Tidak boleh memunculkan alert, return status error terproteksi
+      console.warn('Graceful fallback proctoring capture:', e);
+      return 'CAMERA_BLOCKED_OR_ERROR';
     }
   }
 

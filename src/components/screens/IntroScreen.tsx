@@ -135,11 +135,11 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({
 
   const handleSnapFromLiveCamera = () => {
     const snap = cameraProctoringService.captureSnapshot(0.65);
-    if (snap) {
+    if (snap && snap !== 'CAMERA_BLOCKED_OR_ERROR') {
       setSelfieDataUrl(snap);
       setIsCameraModalOpen(false);
     } else {
-      alert('Gagal mengambil foto. Pastikan wajah terlihat jelas di kamera.');
+      alert('Gagal mengambil foto. Pastikan wajah terlihat jelas di kamera atau coba izinkan akses kamera.');
     }
   };
 

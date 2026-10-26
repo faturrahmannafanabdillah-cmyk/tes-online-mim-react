@@ -418,11 +418,21 @@ export const App: React.FC = () => {
         alpha: {},
         matematika: {},
         rac: {},
-        fotoSelfie: candidateData.fotoSelfie || candidateData.fotoBase64,
-        fotoProctoring: {},
       };
       setCandidateAnswers(updatedCandidateAnswers);
       candidateAnswersRef.current = updatedCandidateAnswers;
+
+      // 1. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
+      // Kirim foto selfie awal secara non-blocking di latar belakang
+      const initialSelfie = candidateData.fotoSelfie || candidateData.fotoBase64;
+      if (initialSelfie) {
+        apiService.uploadSnapshotAsync({
+          token: candidateData.token,
+          nama: candidateData.nama,
+          stageKey: '01_Selfie_Awal',
+          fotoBase64: initialSelfie,
+        });
+      }
 
       // Start Tahap 1: Instruction Screen first
       setTahapSaatIni(1);
@@ -449,16 +459,22 @@ export const App: React.FC = () => {
 
   // Finish Tahap 1 -> Transition to Tahap 2 Instruction (Jepret foto proctoring Tahap 1)
   const handleFinishAlpha = (alphaAnswers: Record<string, AlphaAnswerItem>) => {
+    // 1. Ambil silent snapshot dengan graceful fallback (iOS/Safari-safe, tanpa throw/alert)
     const snapAlpha = cameraProctoringService.captureSnapshot(0.5);
-    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
-    if (snapAlpha) {
-      existingProctoring['tahap1_alpha'] = snapAlpha;
-    }
 
+    // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
+    // Langsung tembak ke backend Code.gs tanpa menunggu (fire-and-forget)
+    apiService.uploadSnapshotAsync({
+      token: candidateAnswersRef.current.token,
+      nama: candidateAnswersRef.current.nama,
+      stageKey: '02_Tahap1_Alpha',
+      fotoBase64: snapAlpha,
+    });
+
+    // 3. State React tetap super ringan - Base64 TIDAK DITUMPUK di memory
     const updated = {
       ...candidateAnswersRef.current,
       alpha: alphaAnswers,
-      fotoProctoring: existingProctoring,
     };
     setCandidateAnswers(updated);
     candidateAnswersRef.current = updated;
@@ -533,15 +549,21 @@ export const App: React.FC = () => {
       return;
     }
 
+    // 1. Ambil silent snapshot dengan graceful fallback (iOS/Safari-safe, tanpa throw/alert)
     const snapMatDas = cameraProctoringService.captureSnapshot(0.5);
-    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
-    if (snapMatDas) {
-      existingProctoring['tahap2_matdas'] = snapMatDas;
-    }
 
+    // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
+    // Kirim langsung ke backend Code.gs tanpa blocking/freeze UI
+    apiService.uploadSnapshotAsync({
+      token: candidateAnswersRef.current.token,
+      nama: candidateAnswersRef.current.nama,
+      stageKey: '03_Tahap2_MatDas',
+      fotoBase64: snapMatDas,
+    });
+
+    // 3. State React tetap ringan tanpa menumpuk Base64
     const updated = {
       ...candidateAnswersRef.current,
-      fotoProctoring: existingProctoring,
     };
     setCandidateAnswers(updated);
     candidateAnswersRef.current = updated;
@@ -591,12 +613,17 @@ export const App: React.FC = () => {
 
   // Finish Tahap 3 -> Final Submission (Jepret foto proctoring Tahap 3)
   const handleFinishRAC = () => {
+    // 1. Ambil silent snapshot dengan graceful fallback
     const snapRAC = cameraProctoringService.captureSnapshot(0.5);
-    const existingProctoring = { ...(candidateAnswersRef.current.fotoProctoring || {}) };
-    if (snapRAC) {
-      existingProctoring['tahap3_rac'] = snapRAC;
-    }
-    candidateAnswersRef.current.fotoProctoring = existingProctoring;
+
+    // 2. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
+    // Kirim langsung ke backend Code.gs secara asynchronous (fire-and-forget)
+    apiService.uploadSnapshotAsync({
+      token: candidateAnswersRef.current.token,
+      nama: candidateAnswersRef.current.nama,
+      stageKey: '04_Tahap3_RAC',
+      fotoBase64: snapRAC,
+    });
 
     submitFinalExam();
   };

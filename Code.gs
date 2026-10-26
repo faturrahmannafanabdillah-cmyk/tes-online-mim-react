@@ -49,6 +49,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
+    if (action === 'uploadSnapshot') {
+      var resultSnapshot = uploadSnapshotBackground(payload.token, payload.nama, payload.stageKey, payload.fotoBase64);
+      return ContentService.createTextOutput(JSON.stringify(resultSnapshot))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (action === 'simpanHasil') {
       var lock = LockService.getScriptLock();
       lock.waitLock(15000); // Tunggu antrean maksimal 15 detik
@@ -610,18 +616,69 @@ function testIzinDrive() {
   Logger.log("🔗 URL Folder: " + folder.getUrl());
 }
 
+// Cerdas: Dapatkan atau buat subfolder unik per-kandidat: [Nama] ([Token])
+function getOrCreateCandidateFolder(namaKandidat, token) {
+  var folderInduk = getOrCreateProctoringFolder();
+  if (!folderInduk) return null;
+
+  var namaClean = (namaKandidat || "Kandidat").replace(/[^a-zA-Z0-9 _-]/g, "").trim();
+  var tokenClean = (token || "NO_TOKEN").replace(/[^a-zA-Z0-9_-]/g, "").trim();
+  var namaFolder = namaClean + " (" + tokenClean + ")";
+
+  var existing = folderInduk.getFoldersByName(namaFolder);
+  if (existing.hasNext()) {
+    return existing.next();
+  }
+
+  return folderInduk.createFolder(namaFolder);
+}
+
+// 1. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
+// Menerima file snapshot proctoring secara fire-and-forget tanpa memblokir ujian kandidat
+function uploadSnapshotBackground(token, nama, stageKey, fotoBase64) {
+  try {
+    var subFolder = getOrCreateCandidateFolder(nama, token);
+    if (!subFolder) {
+      return { success: false, error: "Gagal membuat/mengakses folder Drive kandidat." };
+    }
+
+    var cleanStage = (stageKey || "snapshot").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    // 2. GRACEFUL FALLBACK UNTUK KAMERA MATI (KHUSUS IOS/SAFARI):
+    // Jika kamera diputus/dimatikan oleh OS Safari, buat file catatan peringatan HRD
+    if (!fotoBase64 || fotoBase64 === "CAMERA_BLOCKED_OR_ERROR" || typeof fotoBase64 !== "string") {
+      var timeStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+      var logMsg = "WAKTU: " + timeStr + "\n" +
+                   "TAHAP: " + cleanStage + "\n" +
+                   "STATUS: CAMERA_BLOCKED_OR_ERROR\n" +
+                   "CATATAN: Stream kamera mati, stream terputus, atau izin dimatikan oleh sistem operasi perangkat (iOS/Safari) saat transisi ujian.";
+      subFolder.createFile("LOG_WARNING_" + cleanStage + ".txt", logMsg, "text/plain");
+      return { success: true, status: "logged_camera_error", folderUrl: subFolder.getUrl() };
+    }
+
+    // Jika foto valid berformat Base64
+    if (fotoBase64.indexOf("base64,") !== -1) {
+      var cleanImg = fotoBase64.split("base64,")[1];
+      var decodedImg = Utilities.base64Decode(cleanImg);
+      var fileName = cleanStage + ".jpg";
+      var blobImg = Utilities.newBlob(decodedImg, "image/jpeg", fileName);
+      subFolder.createFile(blobImg);
+      return { success: true, fileName: fileName, folderUrl: subFolder.getUrl() };
+    }
+
+    return { success: false, error: "Format payload foto tidak valid" };
+  } catch (err) {
+    Logger.log("Error uploadSnapshotBackground: " + err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoProctoring) {
   try {
-    var folderInduk = getOrCreateProctoringFolder();
-    if (!folderInduk) return "-";
+    var subFolder = getOrCreateCandidateFolder(namaKandidat, token);
+    if (!subFolder) return "-";
 
-    // Buat subfolder khusus per-kandidat: [Nama] ([Token])
-    var namaClean = (namaKandidat || "Kandidat").replace(/[^a-zA-Z0-9 _-]/g, "");
-    var tokenClean = (token || "NO_TOKEN").replace(/[^a-zA-Z0-9_-]/g, "");
-    var namaFolder = namaClean + " (" + tokenClean + ")";
-    var subFolder = folderInduk.createFolder(namaFolder);
-
-    // 1. Simpan Foto Selfie Master Awal
+    // 1. Simpan Foto Selfie Master Awal jika belum diunggah secara async
     if (fotoSelfie && typeof fotoSelfie === "string" && fotoSelfie.indexOf("base64,") !== -1) {
       try {
         var cleanSelfie = fotoSelfie.split("base64,")[1];
@@ -631,13 +688,17 @@ function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoP
       } catch (errSelfie) {}
     }
 
-    // 2. Simpan Foto-Foto Snapshot Proctoring Berkala
+    // 2. Simpan Foto-Foto Snapshot Proctoring jika ada dalam payload cadangan
     if (fotoProctoring && typeof fotoProctoring === "object") {
       var stepIdx = 2;
       for (var key in fotoProctoring) {
         if (fotoProctoring.hasOwnProperty(key)) {
           var dataFoto = fotoProctoring[key];
-          if (dataFoto && typeof dataFoto === "string" && dataFoto.indexOf("base64,") !== -1) {
+          if (dataFoto === "CAMERA_BLOCKED_OR_ERROR") {
+            try {
+              subFolder.createFile("LOG_WARNING_" + key + ".txt", "Kamera terputus atau dimatikan oleh iOS pada " + key, "text/plain");
+            } catch (e) {}
+          } else if (dataFoto && typeof dataFoto === "string" && dataFoto.indexOf("base64,") !== -1) {
             try {
               var cleanImg = dataFoto.split("base64,")[1];
               var decodedImg = Utilities.base64Decode(cleanImg);
