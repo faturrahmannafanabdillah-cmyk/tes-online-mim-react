@@ -578,16 +578,41 @@ function hitungHasilAkhir(interpAlpha, interpMatDas, interpRAC, isDiskualifikasi
 // =====================================================================
 var FOLDER_DRIVE_PROCTORING_ID = "1CrGGP8ZEk8J37bYaEbRmlViUb5n_ryW7";
 
+// Fungsi cerdas: Mencari folder berdasarkan ID, jika tidak ketemu/beda akun,
+// otomatis mencari/membuat folder "ARSIP_PROCTORING_MIM" di Google Drive akun yang aktif.
+function getOrCreateProctoringFolder() {
+  // 1. Coba ambil dari Folder ID yang ditentukan
+  if (FOLDER_DRIVE_PROCTORING_ID && FOLDER_DRIVE_PROCTORING_ID.trim() !== "") {
+    try {
+      var folderById = DriveApp.getFolderById(FOLDER_DRIVE_PROCTORING_ID.trim());
+      if (folderById) return folderById;
+    } catch (e) {
+      Logger.log("Folder ID tidak dapat diakses langsung oleh akun ini, beralih ke pencarian nama folder...");
+    }
+  }
+
+  // 2. Coba cari folder dengan nama "ARSIP_PROCTORING_MIM" di Drive akun aktif
+  var folderName = "ARSIP_PROCTORING_MIM";
+  var folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  // 3. Jika belum ada sama sekali, buatkan folder baru otomatis di My Drive
+  return DriveApp.createFolder(folderName);
+}
+
 // JALANKAN FUNGSI INI 1 KALI DARI EDITOR APPS SCRIPT UNTUK MEMBERIKAN IZIN GOOGLE DRIVE
 function testIzinDrive() {
-  var folder = DriveApp.getFolderById(FOLDER_DRIVE_PROCTORING_ID);
-  Logger.log("✅ KONEKSI DRIVE BERHASIL! Nama Folder: " + folder.getName());
+  var folder = getOrCreateProctoringFolder();
+  Logger.log("✅ KONEKSI DRIVE BERHASIL!");
+  Logger.log("📁 Nama Folder: " + folder.getName());
+  Logger.log("🔗 URL Folder: " + folder.getUrl());
 }
 
 function simpanFotoKeDrive(folderIndukId, namaKandidat, token, fotoSelfie, fotoProctoring) {
   try {
-    if (!folderIndukId) return "-";
-    var folderInduk = DriveApp.getFolderById(folderIndukId);
+    var folderInduk = getOrCreateProctoringFolder();
     if (!folderInduk) return "-";
 
     // Buat subfolder khusus per-kandidat: [Nama] ([Token])
