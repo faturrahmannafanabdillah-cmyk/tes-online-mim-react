@@ -15,6 +15,14 @@ export const DIRECT_GAS_URL =
 // Proxy endpoint lokal (bebas dari pemblokiran CORS & iframe sandbox)
 export const GAS_API_URL = "/api/gas";
 
+/**
+ * FEATURE FLAG PROCTORING DRIVE UPLOAD:
+ * Saat 'false': Mode Visual/Gimmick aktif (Kamera & Selfie preview tetap tampil di UI kandidat,
+ * tetapi tidak mengunggah file foto ke Google Drive agar sistem 100% cepat & bebas hambatan di HP).
+ * Ubah ke 'true' sewaktu-waktu jika ingin mengaktifkan kembali upload foto riil ke Drive.
+ */
+export const ENABLE_PROCTORING_DRIVE_UPLOAD = false;
+
 export interface InitResponse {
   posisi: string[];
 }
@@ -252,6 +260,11 @@ export const apiService = {
     errorType?: string;
     stageKey?: string;
   }): void {
+    if (!ENABLE_PROCTORING_DRIVE_UPLOAD) {
+      console.log('[PROCTORING] Mode Visual aktif: pengiriman beacon error ke Drive dilewati.');
+      return;
+    }
+
     const errorString = params.errorType || 'CAMERA_MISSING_OR_DENIED';
     const stage = params.stageKey || '01_Init_Camera';
     console.log('[PROCTORING-BEACON] Mengirim laporan error kamera ke backend:', {
@@ -310,6 +323,11 @@ export const apiService = {
     stageKey: string;
     fotoBase64: string;
   }): void {
+    if (!ENABLE_PROCTORING_DRIVE_UPLOAD) {
+      console.log(`[PROCTORING] Mode Visual aktif: upload foto ${params.stageKey} ke Drive dilewati.`);
+      return;
+    }
+
     const isErrorPayload = !params.fotoBase64 || !params.fotoBase64.startsWith('data:');
     console.log('[PROCTORING-UPLOAD] Memulai pengiriman proctoring snapshot:', {
       stageKey: params.stageKey,

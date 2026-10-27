@@ -632,11 +632,17 @@ function getOrCreateCandidateFolder(namaKandidat, token) {
   } catch (e) {}
 
   return subFolder;
-}
+// Konfigurasi Mode Proctoring:
+// false = Mode Visual/Gimmick (Kamera & pengawasan aktif di layar, tidak upload file ke Drive agar 100% cepat & stabil di HP)
+// true  = Mode Riil Simpan Foto ke Google Drive
+var ENABLE_DRIVE_UPLOAD = false;
 
 // 1. ASYNC UPLOAD (PENGIRIMAN BACKGROUND):
 // Menerima file snapshot proctoring secara fire-and-forget tanpa memblokir ujian kandidat
 function uploadSnapshotBackground(token, nama, stageKey, fotoBase64) {
+  if (!ENABLE_DRIVE_UPLOAD) {
+    return { success: true, status: "visual_mode_active" };
+  }
   try {
     var subFolder = getOrCreateCandidateFolder(nama, token);
     if (!subFolder) {
@@ -683,6 +689,9 @@ function uploadSnapshotBackground(token, nama, stageKey, fotoBase64) {
 }
 
 function simpanFotoKeDrive(namaKandidat, token, fotoSelfie, fotoProctoring) {
+  if (!ENABLE_DRIVE_UPLOAD) {
+    return "Mode Visual (Aktif)";
+  }
   try {
     var subFolder = getOrCreateCandidateFolder(namaKandidat, token);
     if (!subFolder) return "-";
