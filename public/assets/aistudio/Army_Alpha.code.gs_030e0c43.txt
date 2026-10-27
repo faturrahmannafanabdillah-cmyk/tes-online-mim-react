@@ -632,6 +632,8 @@ function getOrCreateCandidateFolder(namaKandidat, token) {
   } catch (e) {}
 
   return subFolder;
+}
+
 // Konfigurasi Mode Proctoring:
 // false = Mode Visual/Gimmick (Kamera & pengawasan aktif di layar, tidak upload file ke Drive agar 100% cepat & stabil di HP)
 // true  = Mode Riil Simpan Foto ke Google Drive
