@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, Play, CheckCircle, ArrowRight } from 'lucide-react';
+import { Volume2, Play, CheckCircle } from 'lucide-react';
 import { ArmyAlphaQuestion, AlphaAnswerItem } from '../../types';
 import { DEFAULT_ALPHA_QUESTIONS } from '../../data/mockData';
 
@@ -12,13 +12,11 @@ interface ArmyAlphaScreenProps {
 export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
   questions = DEFAULT_ALPHA_QUESTIONS,
   onFinishAlpha,
-  onSkipAlpha,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [boardVisible, setBoardVisible] = useState(false);
-  const [boardActive, setBoardActive] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
+  const [boardActive, setBoardActive] = useState(true);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [alphaAnswers, setAlphaAnswers] = useState<Record<string, AlphaAnswerItem>>({});
 
   // Dynamic input states for the current question
@@ -33,9 +31,114 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
   const [svgInputValue, setSvgInputValue] = useState('');
   const svgInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronized refs to guarantee zero stale closure when audio.onended triggers
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
+  const inputsRef = useRef<string[]>([]);
+  const strikethroughRef = useRef<(number | string)[]>([]);
+  const underlineRef = useRef<(number | string)[]>([]);
+  const selectedRouteRef = useRef<string>('');
+  const irisanInputsRef = useRef<Record<string, string>>({});
+  const alphaAnswersRef = useRef<Record<string, AlphaAnswerItem>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timerIntervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    inputsRef.current = inputs;
+  }, [inputs]);
+
+  useEffect(() => {
+    strikethroughRef.current = strikethroughList;
+  }, [strikethroughList]);
+
+  useEffect(() => {
+    underlineRef.current = underlineList;
+  }, [underlineList]);
+
+  useEffect(() => {
+    selectedRouteRef.current = selectedRoute;
+  }, [selectedRoute]);
+
+  useEffect(() => {
+    irisanInputsRef.current = irisanInputs;
+  }, [irisanInputs]);
+
   const currentQuestion = questions[currentIndex];
+
+  const saveCurrentQuestionAnswers = () => {
+    const q = questions[currentIndexRef.current];
+    if (!q) return alphaAnswersRef.current;
+
+    const itemAnswer: AlphaAnswerItem = {
+      nomor: q.nomor,
+      tipe: q.tipe,
+      inputan: [...inputsRef.current],
+      dicoret: [...strikethroughRef.current],
+      garisBawah: [...underlineRef.current],
+      jalurTerpilih: selectedRouteRef.current,
+      irisan: { ...irisanInputsRef.current },
+    };
+
+    const updated = {
+      ...alphaAnswersRef.current,
+      [q.id]: itemAnswer,
+    };
+    alphaAnswersRef.current = updated;
+    setAlphaAnswers(updated);
+    return updated;
+  };
+
+  // Putar file MP3 audio resmi yang sudah berisi durasi instruksi, jeda Mulai, hingga Stop
+  const playAudioForCurrentQuestion = () => {
+    const q = questions[currentIndexRef.current];
+    if (!q) return;
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const audioSrc = q.audio || `/audio/army_alpha/soal_${q.nomor}.mp3`;
+    const audio = new Audio(audioSrc);
+    audioRef.current = audio;
+
+    setIsPlayingAudio(true);
+    setBoardActive(true);
+    setAutoplayBlocked(false);
+
+    // 3. AUTO-NEXT BERDASARKAN AUDIO (.onended)
+    // Ketika file audio selesai terputar penuh, otomatis simpan dan render soal berikutnya
+    audio.onended = () => {
+      console.log(`[ArmyAlpha] Audio soal ${q.nomor} selesai (.onended). Auto-next ke soal berikutnya.`);
+      setIsPlayingAudio(false);
+      setBoardActive(false);
+      setActiveSvgArea(null);
+
+      const updated = saveCurrentQuestionAnswers();
+
+      // Transisi otomatis ke soal berikutnya tanpa tombol Lanjut
+      setTimeout(() => {
+        if (currentIndexRef.current + 1 < questions.length) {
+          setCurrentIndex((prev) => prev + 1);
+        } else {
+          onFinishAlpha(updated);
+        }
+      }, 350);
+    };
+
+    audio.onerror = (e) => {
+      console.warn(`[ArmyAlpha] Audio soal ${q.nomor} gagal dimuat:`, e);
+      setIsPlayingAudio(false);
+      setBoardActive(true);
+    };
+
+    audio.play().catch((err) => {
+      console.warn(`[ArmyAlpha] Autoplay audio nomor ${q.nomor} memerlukan interaksi awal browser:`, err);
+      setAutoplayBlocked(true);
+      setIsPlayingAudio(false);
+      setBoardActive(true);
+    });
+  };
 
   useEffect(() => {
     return () => {
@@ -49,19 +152,11 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
   useEffect(() => {
     if (!currentQuestion) return;
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    clearInterval(timerIntervalRef.current);
-    setBoardVisible(false);
-    setBoardActive(false);
-    setIsPlayingAudio(false);
-    setTimerSeconds(null);
+    currentIndexRef.current = currentIndex;
     setActiveSvgArea(null);
     setSvgInputValue('');
 
-    const existing = alphaAnswers[currentQuestion.id] || {
+    const existing = alphaAnswersRef.current[currentQuestion.id] || {
       nomor: currentQuestion.nomor,
       tipe: currentQuestion.tipe,
       inputan: [],
@@ -76,7 +171,16 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
     setUnderlineList(existing.garisBawah || []);
     setSelectedRoute(existing.jalurTerpilih || '');
     setIrisanInputs(existing.irisan || {});
-  }, [currentIndex, currentQuestion]);
+
+    inputsRef.current = existing.inputan || [];
+    strikethroughRef.current = existing.dicoret || [];
+    underlineRef.current = existing.garisBawah || [];
+    selectedRouteRef.current = existing.jalurTerpilih || '';
+    irisanInputsRef.current = existing.irisan || {};
+
+    // Otomatis putar audio soal yang sedang aktif
+    playAudioForCurrentQuestion();
+  }, [currentIndex, currentQuestion?.id]);
 
   // Focus floating input when clicking SVG area
   useEffect(() => {
@@ -84,146 +188,6 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
       svgInputRef.current.focus();
     }
   }, [activeSvgArea]);
-
-  // Play official human voiceover audio synchronized with 'Mulai' and 'Stop'
-  const handleStartInstruction = () => {
-    if (isPlayingAudio || boardActive) return;
-
-    const audioSrc = currentQuestion.audio || `/audio/army_alpha/soal_${currentQuestion.nomor}.mp3`;
-    const audio = new Audio(audioSrc);
-    audioRef.current = audio;
-
-    setIsPlayingAudio(true);
-    setBoardVisible(true);
-
-    const mulaiThreshold = currentQuestion.mulaiTime ?? 17.0;
-    const stopThreshold = currentQuestion.stopTime ?? (mulaiThreshold + currentQuestion.waktu);
-
-    let hasStartedWorking = false;
-    let hasStopped = false;
-
-    audio.ontimeupdate = () => {
-      const cur = audio.currentTime;
-
-      // When audio reaches the word 'Mulai'
-      if (cur >= mulaiThreshold && !hasStartedWorking && !hasStopped) {
-        hasStartedWorking = true;
-        setIsPlayingAudio(false);
-        setBoardActive(true);
-      }
-
-      // If in working phase, update countdown timer
-      if (hasStartedWorking && !hasStopped) {
-        const remaining = Math.max(0, Math.ceil(stopThreshold - cur));
-        setTimerSeconds(remaining);
-
-        if (cur >= stopThreshold) {
-          hasStopped = true;
-          setBoardActive(false);
-          setActiveSvgArea(null);
-          setTimerSeconds(0);
-          saveCurrentQuestionAnswers();
-        }
-      }
-    };
-
-    audio.onended = () => {
-      setBoardActive(false);
-      setIsPlayingAudio(false);
-      setTimerSeconds(0);
-      setActiveSvgArea(null);
-      const updated = saveCurrentQuestionAnswers();
-
-      // Automatically advance to next question after audio finishes
-      setTimeout(() => {
-        if (currentIndex + 1 < questions.length) {
-          setCurrentIndex((prev) => prev + 1);
-        } else {
-          onFinishAlpha(updated);
-        }
-      }, 1500);
-    };
-
-    audio.onerror = () => {
-      // Fallback if audio file cannot be loaded
-      setIsPlayingAudio(false);
-      setBoardActive(true);
-      const duration = currentQuestion.waktu;
-      setTimerSeconds(duration);
-
-      let sisa = duration;
-      timerIntervalRef.current = setInterval(() => {
-        sisa -= 1;
-        setTimerSeconds(sisa);
-
-        if (sisa <= 0) {
-          clearInterval(timerIntervalRef.current);
-          handleTimeExpired();
-        }
-      }, 1000);
-    };
-
-    audio.play().catch(() => {
-      // Browser autoplay policy blocked - activate fallback
-      setIsPlayingAudio(false);
-      setBoardActive(true);
-      setTimerSeconds(currentQuestion.waktu);
-    });
-  };
-
-  const saveCurrentQuestionAnswers = () => {
-    const itemAnswer: AlphaAnswerItem = {
-      nomor: currentQuestion.nomor,
-      tipe: currentQuestion.tipe,
-      inputan: inputs,
-      dicoret: strikethroughList,
-      garisBawah: underlineList,
-      jalurTerpilih: selectedRoute,
-      irisan: irisanInputs,
-    };
-
-    const updated = {
-      ...alphaAnswers,
-      [currentQuestion.id]: itemAnswer,
-    };
-    setAlphaAnswers(updated);
-    return updated;
-  };
-
-  const handleTimeExpired = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    setBoardActive(false);
-    setActiveSvgArea(null);
-    const updated = saveCurrentQuestionAnswers();
-
-    setTimeout(() => {
-      if (currentIndex + 1 < questions.length) {
-        setCurrentIndex((prev) => prev + 1);
-      } else {
-        onFinishAlpha(updated);
-      }
-    }, 1200);
-  };
-
-  const handleNextManual = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    clearInterval(timerIntervalRef.current);
-    setBoardActive(false);
-    setActiveSvgArea(null);
-    const updated = saveCurrentQuestionAnswers();
-
-    if (currentIndex + 1 < questions.length) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      onFinishAlpha(updated);
-    }
-  };
 
   const handleInputArray = (idx: number, val: string, maxLen?: number) => {
     const next = [...inputs];
@@ -290,46 +254,25 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
 
       {/* Main Board Card */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.07)] border border-slate-200 text-center relative overflow-hidden min-h-[340px] flex flex-col justify-between">
-        {/* Play Audio Button (Only before audio starts) */}
-        {!boardVisible && timerSeconds === null && (
-          <div className="my-10 max-w-sm mx-auto space-y-3">
+        {/* Tombol Play cadangan jika autoplay dicegah oleh kebijakan browser */}
+        {autoplayBlocked && (
+          <div className="my-4 max-w-sm mx-auto">
             <button
               type="button"
-              onClick={handleStartInstruction}
-              disabled={isPlayingAudio}
-              className={`w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all shadow-md flex items-center justify-center gap-3 cursor-pointer ${
-                isPlayingAudio
-                  ? 'bg-amber-500 text-white cursor-wait animate-pulse'
-                  : 'bg-[#0056b3] hover:bg-[#003d80] text-white active:scale-95 shadow-[#0056b3]/20'
-              }`}
+              onClick={playAudioForCurrentQuestion}
+              className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm sm:text-base bg-[#0056b3] hover:bg-[#003d80] text-white shadow-md active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
             >
-              {isPlayingAudio ? (
-                <>
-                  <Volume2 className="w-6 h-6 animate-bounce" />
-                  <span>🔊 Mendengarkan Instruksi...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5 fill-current" />
-                  <span>▶️ Putar Audio Nomor {currentQuestion.nomor}</span>
-                </>
-              )}
+              <Play className="w-5 h-5 fill-current" />
+              <span>▶️ Putar Audio Nomor {currentQuestion.nomor}</span>
             </button>
           </div>
         )}
 
-        {/* Audio playing banner */}
+        {/* Banner Status Audio (Tanpa angka hitung mundur / timer visual) */}
         {isPlayingAudio && (
-          <div className="flex items-center justify-center gap-2 text-sm font-bold text-amber-600 animate-pulse my-2">
-            <Volume2 className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50/80 border border-blue-200 py-1.5 px-4 rounded-full max-w-fit mx-auto my-2 animate-pulse">
+            <Volume2 className="w-4 h-4 text-blue-600 animate-bounce" />
             <span>Mendengarkan instruksi penguji...</span>
-          </div>
-        )}
-
-        {/* Countdown Timer */}
-        {timerSeconds !== null && (
-          <div className="text-2xl sm:text-3xl font-black text-[#dc3545] my-2 animate-pulse">
-            {timerSeconds > 0 ? `⏳ ${timerSeconds} Detik` : '⏰ STOP!'}
           </div>
         )}
 
@@ -338,8 +281,8 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
         {/* ------------------------------------------------------------- */}
         <div
           className={`py-6 px-2 my-auto transition-all duration-300 flex flex-col justify-center items-center ${
-            boardVisible ? 'opacity-100 filter-none' : 'opacity-0 hidden'
-          } ${boardActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
+            boardActive ? 'pointer-events-auto' : 'pointer-events-none opacity-80'
+          }`}
         >
           {/* NOMOR 1: 5 LINGKARAN */}
           {currentQuestion.tipe === 'SOAL_1_LINGKARAN' && (
@@ -1042,33 +985,7 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
             </div>
           )}
         </div>
-
-        {/* Advance button */}
-        {boardActive && (
-          <div className="pt-4 border-t border-slate-100 flex justify-end">
-            <button
-              type="button"
-              onClick={handleNextManual}
-              className="py-2.5 px-6 bg-[#0056b3] hover:bg-[#003d80] text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition shadow-md active:scale-95 cursor-pointer"
-            >
-              <span>{currentIndex + 1 < questions.length ? 'Lanjut' : 'Selesai'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
       </div>
-
-      {onSkipAlpha && (
-        <div className="text-center pt-2">
-          <button
-            type="button"
-            onClick={onSkipAlpha}
-            className="text-xs text-slate-400 hover:text-slate-600 underline font-medium"
-          >
-            Lewati ke Tahap 2
-          </button>
-        </div>
-      )}
     </div>
   );
 };
