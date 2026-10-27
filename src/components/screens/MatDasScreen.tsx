@@ -195,7 +195,7 @@ export const MatDasScreen: React.FC<MatDasScreenProps> = ({
                 Tahap 2
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500">
-                {displayQuestions.length} Soal • Batas 25 Menit
+                {displayQuestions.length} Soal • Batas 9 Menit
               </p>
             </div>
           </div>

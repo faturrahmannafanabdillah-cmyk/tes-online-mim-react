@@ -193,7 +193,7 @@ export const LatihanRACScreen: React.FC<LatihanRACScreenProps> = ({ onFinishLati
               onClick={onFinishLatihan}
               className="py-3 px-6 bg-[#0056b3] hover:bg-[#003d80] text-white rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition shadow-md cursor-pointer"
             >
-              <span>Mulai Ujian Sebenarnya (40 Soal / 2 Menit)</span>
+              <span>Mulai Ujian Sebenarnya (40 Soal)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, XCircle, Clock, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Zap, ArrowLeft, ArrowRight } from 'lucide-react';
 import { RACQuestionItem } from '../../types';
 import { DEFAULT_RAC_QUESTIONS } from '../../data/mockData';
 import { RACSymbolRenderer } from './RACSymbolRenderer';
@@ -20,19 +20,19 @@ export const RACScreen: React.FC<RACScreenProps> = ({
   isSubmitting,
 }) => {
   const [activeIdx, setActiveIdx] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(120); // 2 Menit = 120 Detik
+  const [timeLeft, setTimeLeft] = useState(120); // 2 Menit = 120 Detik (Blind Timer)
   const timerRef = useRef<any>(null);
 
   const answeredCount = Object.keys(answers).length;
   const currentQ = questions[activeIdx] || questions[0];
 
-  // 120s Countdown Timer
+  // 120s Blind Background Countdown Timer & Auto-Submit
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
-          alert('⏳ WAKTU 2 MENIT HABIS! Seluruh jawaban Tahap 3 Anda akan langsung dikirim.');
+          console.log('[RAC] Blind timer 120 detik selesai. Menjalankan auto-submit...');
           onFinishRAC();
           return 0;
         }
@@ -41,7 +41,7 @@ export const RACScreen: React.FC<RACScreenProps> = ({
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, []);
+  }, [onFinishRAC]);
 
   // Keyboard shortcut listener (S for SAMA, T for TIDAK SAMA, Left/Right arrow)
   useEffect(() => {
@@ -72,16 +72,11 @@ export const RACScreen: React.FC<RACScreenProps> = ({
     }
   };
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  const isUrgent = timeLeft <= 30;
-
   const [showGridModal, setShowGridModal] = useState(false);
 
   return (
     <div className="max-w-[760px] mx-auto py-3 sm:py-5 px-3 sm:px-4 animate-fade-in space-y-3 sm:space-y-4 safe-bottom-area">
-      {/* Title & Speed Warning */}
+      {/* Title Header (Blind Timer - Waktu hitung mundur berjalan diam-diam di background) */}
       <div className="bg-[#e8f0fb] rounded-xl p-3 sm:p-4 text-center border border-blue-100 shadow-sm flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Zap className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
@@ -90,19 +85,13 @@ export const RACScreen: React.FC<RACScreenProps> = ({
               Tahap 3
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 truncate">
-              40 Soal • Batas Waktu 2 Menit (120 Detik)
+              40 Soal
             </p>
           </div>
         </div>
 
-        {/* 2-Minute Countdown Display */}
-        <div
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xs sm:text-base text-white shadow-sm shrink-0 transition-colors ${
-            isUrgent ? 'bg-[#dc3545] animate-timer-shake' : 'bg-[#0056b3]'
-          }`}
-        >
-          <Clock className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
-          <span className="font-mono text-base sm:text-xl font-black">{formattedTime}</span>
+        <div className="text-xs font-bold bg-[#0056b3] text-white px-3 py-1.5 rounded-full shadow-sm shrink-0">
+          Soal {activeIdx + 1} / {questions.length}
         </div>
       </div>
 
@@ -279,20 +268,11 @@ export const RACScreen: React.FC<RACScreenProps> = ({
         </div>
       </div>
 
-      {/* Final Submit Button */}
-      <div className="pt-2 pb-6 sm:pb-10">
-        <button
-          type="button"
-          onClick={onFinishRAC}
-          disabled={isSubmitting}
-          className="w-full py-3.5 sm:py-4 px-6 bg-[#0056b3] hover:bg-[#003d80] text-white rounded-xl font-bold text-sm sm:text-lg transition shadow-lg shadow-[#0056b3]/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:bg-slate-300 min-h-[48px]"
-        >
-          {isSubmitting ? (
-            'Mengirimkan Seluruh Hasil Ujian...'
-          ) : (
-            <span>Selesai Ujian & Kirim Jawaban Akhir ✓</span>
-          )}
-        </button>
+      {/* Mobile-first ergonomic footer indicator (Auto-Submit aktif) */}
+      <div className="text-center py-2 pb-6 sm:pb-8">
+        <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+          Jawaban langsung tersimpan otomatis setiap Anda memilih.
+        </p>
       </div>
     </div>
   );

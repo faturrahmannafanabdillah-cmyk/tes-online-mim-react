@@ -52,7 +52,7 @@ const TAHAP_2_INSTRUCTIONS = [
 
 const TAHAP_3_INSTRUCTIONS = [
   'Soal berjumlah 40 butir dimana pada setiap soal Anda diminta memilih apakah kedua tulisan/ deret angka/ gambar/ tanda yang tersedia pada soal SAMA (V) atau BERBEDA (X).',
-  'Alokasi waktu pengerjaan adalah 2 MENIT. Kerjakan secepat dan seteliti mungkin.',
+  'Kerjakan secepat dan seteliti mungkin.',
 ];
 
 const TAHAP_3_EXAMPLES = [
@@ -284,9 +284,9 @@ export const App: React.FC = () => {
   };
 
   const handleTimerTimeout = () => {
-    alert('⏳ WAKTU HABIS! Jawaban Anda pada tahap ini akan otomatis disimpan.');
     if (tahapRef.current === 2) {
-      transitionToStage3Instruction();
+      console.log('⏳ Waktu Tahap 2 habis (9 menit). Menyimpan jawaban dan lanjut ke Tahap 3...');
+      handleFinishStage2MatDas();
     }
   };
 
@@ -505,7 +505,7 @@ export const App: React.FC = () => {
 
   const transitionToStage2MatDas = () => {
     clearInterval(timerIntervalRef.current);
-    const duration = 25 * 60; // 25 Menit
+    const duration = 9 * 60; // 9 Menit = 540 Detik
     setCurrentScreen('matematika');
     startTimer(duration);
 
@@ -775,7 +775,7 @@ export const App: React.FC = () => {
         {currentScreen === 'instruction_2' && (
           <InstructionScreen
             tahapNumber={2}
-            subTitle="18 Butir Soal • Batas Waktu 25 Menit"
+            subTitle="18 Butir Soal • Batas Waktu 9 Menit"
             instructionText={TAHAP_2_INSTRUCTIONS}
             onStart={transitionToStage2MatDas}
           />
@@ -803,7 +803,7 @@ export const App: React.FC = () => {
         {currentScreen === 'instruction_3' && (
           <InstructionScreen
             tahapNumber={3}
-            subTitle="40 Butir Soal • Batas Waktu 2 Menit"
+            subTitle="40 Butir Soal"
             instructionText={TAHAP_3_INSTRUCTIONS}
             examples={TAHAP_3_EXAMPLES}
             nextButtonLabel="Lanjut ke Latihan Soal"
