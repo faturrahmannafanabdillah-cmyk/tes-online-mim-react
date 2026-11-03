@@ -479,124 +479,64 @@ export const ArmyAlphaScreen: React.FC<ArmyAlphaScreenProps> = ({
           {/* NOMOR 5: SEGITIGA SIKU-SIKU & LINGKARAN (5 AREA INDEPENDEN TANPA SPOILER) */}
           {currentQuestion.tipe === 'SOAL_5_SEGITIGA_LINGKARAN' && (
             <div className="relative w-80 h-60 sm:w-96 sm:h-64 mx-auto border border-slate-300 rounded-2xl bg-white p-2 flex items-center justify-center">
-              <svg viewBox="0 0 240 160" className="w-full h-full select-none">
-                {/* 5 Area Potongan Path Independen untuk Interaksi & Highlight */}
-                {/* 1. Sudut lancip atas segitiga */}
-                <path
-                  d="M 40 20 L 67.4 40.6 A 53 53 0 0 0 40 87 L 40 20 Z"
-                  fill={activeSvgArea?.id === 'segitiga_atas' ? '#dbeafe' : 'transparent'}
-                  className="cursor-pointer hover:fill-blue-50/60 transition-colors"
-                  onClick={() => handleSvgAreaClick('segitiga_atas', 48, 50)}
+              <svg viewBox="0 0 200 150" className="w-full h-full select-none">
+                <defs>
+                  {/* Segitiga Siku-Siku: Tegak lurus di kiri (x=30), mendatar di bawah (y=130) */}
+                  <clipPath id="segitiga-clip">
+                    <polygon points="30,20 30,130 170,130" />
+                  </clipPath>
+                  {/* Lingkaran memotong garis miring (hipotenusa) */}
+                  <clipPath id="lingkaran-clip">
+                    <circle cx="100" cy="95" r="45" />
+                  </clipPath>
+                </defs>
+
+                {/* 1. Segitiga Luar (Sisa segitiga yang tidak kena lingkaran) */}
+                <polygon 
+                  points="30,20 30,130 170,130" 
+                  fill={activeSvgArea?.id === 'segitiga_luar' ? '#dbeafe' : 'transparent'} 
+                  stroke="#1e293b" strokeWidth="3" 
+                  className="cursor-pointer hover:fill-blue-50 transition-colors"
+                  onClick={() => handleSvgAreaClick('segitiga_luar', 50, 110)}
                 />
 
-                {/* 2. Area sudut siku-siku kiri bawah segitiga di luar lingkaran */}
-                <path
-                  d="M 40 87 L 40 140 L 93 140 A 53 53 0 0 1 40 87 Z"
-                  fill={activeSvgArea?.id === 'segitiga_siku' ? '#dbeafe' : 'transparent'}
-                  className="cursor-pointer hover:fill-blue-50/60 transition-colors"
-                  onClick={() => handleSvgAreaClick('segitiga_siku', 58, 122)}
+                {/* 2. Lingkaran Luar (Area lingkaran di luar segitiga) */}
+                <circle 
+                  cx="100" cy="95" r="45" 
+                  fill={activeSvgArea?.id === 'lingkaran_luar' ? '#dbeafe' : 'transparent'} 
+                  stroke="#1e293b" strokeWidth="3" 
+                  className="cursor-pointer hover:fill-blue-50 transition-colors"
+                  onClick={() => handleSvgAreaClick('lingkaran_luar', 115, 65)}
                 />
 
-                {/* 3. Sudut lancip ujung kanan segitiga */}
-                <path
-                  d="M 93 140 L 200 140 L 144.7 98.5 A 53 53 0 0 1 93 140 Z"
-                  fill={activeSvgArea?.id === 'segitiga_kanan' ? '#dbeafe' : 'transparent'}
-                  className="cursor-pointer hover:fill-blue-50/60 transition-colors"
-                  onClick={() => handleSvgAreaClick('segitiga_kanan', 146, 126)}
+                {/* 3. Irisan (Tengah - Perpotongan Segitiga & Lingkaran) */}
+                {/* Ditimpa di atasnya dengan clipPath agar persis bentuk irisan */}
+                <circle 
+                  cx="100" cy="95" r="45" 
+                  clipPath="url(#segitiga-clip)"
+                  fill={activeSvgArea?.id === 'irisan' ? '#bfdbfe' : 'transparent'} 
+                  stroke="#1e293b" strokeWidth="3" 
+                  className="cursor-pointer hover:fill-blue-100 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSvgAreaClick('irisan', 85, 105);
+                  }}
                 />
 
-                {/* 4. Area irisan di dalam lingkaran dan di dalam segitiga */}
-                <path
-                  d="M 67.4 40.6 L 144.7 98.5 A 53 53 0 1 1 67.4 40.6 Z"
-                  fill={activeSvgArea?.id === 'irisan' ? '#dbeafe' : 'transparent'}
-                  className="cursor-pointer hover:fill-blue-50/60 transition-colors"
-                  onClick={() => handleSvgAreaClick('irisan', 96, 92)}
-                />
-
-                {/* 5. Area lingkaran yang menonjol keluar dari sisi miring segitiga */}
-                <path
-                  d="M 67.4 40.6 A 53 53 0 0 1 144.7 98.5 L 67.4 40.6 Z"
-                  fill={activeSvgArea?.id === 'lingkaran_luar' ? '#dbeafe' : 'transparent'}
-                  className="cursor-pointer hover:fill-blue-50/60 transition-colors"
-                  onClick={() => handleSvgAreaClick('lingkaran_luar', 112, 58)}
-                />
-
-                {/* Garis Batas Visual Asli (Segitiga Siku-Siku & Lingkaran) */}
-                <polygon
-                  points="40,20 40,140 200,140"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="3.5"
-                  className="pointer-events-none"
-                />
-                <circle
-                  cx="93"
-                  cy="87"
-                  r="53"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="3.5"
-                  className="pointer-events-none"
-                />
-
-                {/* Teks Input Kandidat yang Terletak di Tengah (Center) Masing-Masing Potongan */}
-                {irisanInputs['segitiga_atas'] && (
-                  <text
-                    x="48"
-                    y="50"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="font-black text-2xl fill-slate-900 pointer-events-none select-none"
-                  >
-                    {irisanInputs['segitiga_atas']}
+                {/* Area Render Teks Jawaban */}
+                {irisanInputs['segitiga_luar'] && (
+                  <text x="50" y="110" textAnchor="middle" dominantBaseline="central" className="font-black text-2xl fill-slate-900 pointer-events-none">
+                    {irisanInputs['segitiga_luar']}
                   </text>
                 )}
-
-                {irisanInputs['segitiga_siku'] && (
-                  <text
-                    x="58"
-                    y="122"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="font-black text-2xl fill-slate-900 pointer-events-none select-none"
-                  >
-                    {irisanInputs['segitiga_siku']}
-                  </text>
-                )}
-
-                {irisanInputs['segitiga_kanan'] && (
-                  <text
-                    x="146"
-                    y="126"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="font-black text-2xl fill-slate-900 pointer-events-none select-none"
-                  >
-                    {irisanInputs['segitiga_kanan']}
-                  </text>
-                )}
-
-                {irisanInputs['irisan'] && (
-                  <text
-                    x="96"
-                    y="92"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="font-black text-2xl fill-slate-900 pointer-events-none select-none"
-                  >
-                    {irisanInputs['irisan']}
-                  </text>
-                )}
-
                 {irisanInputs['lingkaran_luar'] && (
-                  <text
-                    x="112"
-                    y="58"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="font-black text-2xl fill-slate-900 pointer-events-none select-none"
-                  >
+                  <text x="115" y="65" textAnchor="middle" dominantBaseline="central" className="font-black text-2xl fill-slate-900 pointer-events-none">
                     {irisanInputs['lingkaran_luar']}
+                  </text>
+                )}
+                {irisanInputs['irisan'] && (
+                  <text x="85" y="105" textAnchor="middle" dominantBaseline="central" className="font-black text-2xl fill-slate-900 pointer-events-none">
+                    {irisanInputs['irisan']}
                   </text>
                 )}
               </svg>
